@@ -235,8 +235,8 @@ static volatile u8_t mem_free_count;
 static void
 plug_holes(struct mem *mem)
 {
-  struct mem *nmem;
-  struct mem *pmem;
+  struct mem *nmem;     //相邻的下一个内存块
+  struct mem *pmem;     //相邻的上一个内存块
 
   LWIP_ASSERT("plug_holes: mem >= ram", (u8_t *)mem >= ram);
   LWIP_ASSERT("plug_holes: mem < ram_end", (u8_t *)mem < (u8_t *)ram_end);
@@ -245,7 +245,9 @@ plug_holes(struct mem *mem)
   /* plug hole forward */
   LWIP_ASSERT("plug_holes: mem->next <= MEM_SIZE_ALIGNED", mem->next <= MEM_SIZE_ALIGNED);
 
+    //查找相邻的下一个内存块
   nmem = (struct mem *)(void *)&ram[mem->next];
+    //如果这个内存块也是空闲的，且他不是最后一个空闲块
   if (mem != nmem && nmem->used == 0 && (u8_t *)nmem != (u8_t *)ram_end) {
     /* if mem->next is unused and not end of ram, combine mem and mem->next */
     if (lfree == nmem) {
@@ -255,6 +257,7 @@ plug_holes(struct mem *mem)
     ((struct mem *)(void *)&ram[nmem->next])->prev = (mem_size_t)((u8_t *)mem - ram);
   }
 
+    //查找相邻的上一个内存块
   /* plug hole backward */
   pmem = (struct mem *)(void *)&ram[mem->prev];
   if (pmem != mem && pmem->used == 0) {
@@ -291,7 +294,7 @@ mem_init(void)
   ram_end->next = MEM_SIZE_ALIGNED;
   ram_end->prev = MEM_SIZE_ALIGNED;
 
-  /* initialize the lowest-free pointer to the start of the heap */
+  /* initialize the lowest-free pointer to the start of the heap 初始化最低可用指针以指向堆的开始 */
   lfree = (struct mem *)(void *)ram;
 
   MEM_STATS_AVAIL(avail, MEM_SIZE_ALIGNED);
@@ -313,6 +316,7 @@ mem_free(void *rmem)
   struct mem *mem;
   LWIP_MEM_FREE_DECL_PROTECT();
 
+    //如果要释放的地址是NULL的，直接return
   if (rmem == NULL) {
     LWIP_DEBUGF(MEM_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_SERIOUS, ("mem_free(p == NULL) was called.\n"));
     return;
@@ -322,6 +326,7 @@ mem_free(void *rmem)
   LWIP_ASSERT("mem_free: legal memory", (u8_t *)rmem >= (u8_t *)ram &&
     (u8_t *)rmem < (u8_t *)ram_end);
 
+    //如果要释放的地址超出范围，return
   if ((u8_t *)rmem < (u8_t *)ram || (u8_t *)rmem >= (u8_t *)ram_end) {
     SYS_ARCH_DECL_PROTECT(lev);
     LWIP_DEBUGF(MEM_DEBUG | LWIP_DBG_LEVEL_SEVERE, ("mem_free: illegal memory\n"));
@@ -333,7 +338,7 @@ mem_free(void *rmem)
   }
   /* protect the heap from concurrent access */
   LWIP_MEM_FREE_PROTECT();
-  /* Get the corresponding struct mem ... */
+  /* Get the corresponding struct mem ... 获得mem结构，rmem为数据块的地址，mem在数据块前，所以要减 */
   mem = (struct mem *)(void *)((u8_t *)rmem - SIZEOF_STRUCT_MEM);
   /* ... which has to be in a used state ... */
   LWIP_ASSERT("mem_free: mem->used", mem->used);
@@ -347,7 +352,7 @@ mem_free(void *rmem)
 
   MEM_STATS_DEC_USED(used, mem->next - (mem_size_t)(((u8_t *)mem - ram)));
 
-  /* finally, see if prev or next are free also */
+  /* finally, see if prev or next are free also 看mem的上一个或下一个是否空闲 */
   plug_holes(mem);
 #if LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT
   mem_free_count = 1;
@@ -528,6 +533,7 @@ mem_malloc(mem_size_t size)
 
     /* Scan through the heap searching for a free block that is big enough,
      * beginning with the lowest free block.
+        扫描堆以查找足够大的空闲块，从最低的空闲块开始。
      */
     for (ptr = (mem_size_t)((u8_t *)lfree - ram); ptr < MEM_SIZE_ALIGNED - size;
          ptr = ((struct mem *)(void *)&ram[ptr])->next) {
@@ -545,11 +551,13 @@ mem_malloc(mem_size_t size)
       }
 #endif /* LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT */
 
+        //如果当前的内存块没有使用，且当前内存块的大小大于要分配的大小
       if ((!mem->used) &&
           (mem->next - (ptr + SIZEOF_STRUCT_MEM)) >= size) {
         /* mem is not used and at least perfect fit is possible:
          * mem->next - (ptr + SIZEOF_STRUCT_MEM) gives us the 'user data size' of mem */
 
+        //如果当前内存块的大小不仅满足要分配的空间，而且还能再分配一个mem，且字节对齐
         if (mem->next - (ptr + SIZEOF_STRUCT_MEM) >= (size + SIZEOF_STRUCT_MEM + MIN_SIZE_ALIGNED)) {
           /* (in addition to the above, we test if another struct mem (SIZEOF_STRUCT_MEM) containing
            * at least MIN_SIZE_ALIGNED of data also fits in the 'user data space' of 'mem')
@@ -562,17 +570,17 @@ mem_malloc(mem_size_t size)
            *       the 2 regions would be combined, resulting in more free memory
            */
           ptr2 = ptr + SIZEOF_STRUCT_MEM + size;
-          /* create mem2 struct */
+          /* create mem2 struct mem分配完成了，这里需要将剩下的空闲空间再用一个mem2链接到mem后面 */
           mem2 = (struct mem *)(void *)&ram[ptr2];
           mem2->used = 0;
           mem2->next = mem->next;
           mem2->prev = ptr;
           /* and insert it between mem and mem->next */
-          mem->next = ptr2;
+          mem->next = ptr2;     //mem分配了size大小的空间后结束点
           mem->used = 1;
 
-          if (mem2->next != MEM_SIZE_ALIGNED) {
-            ((struct mem *)(void *)&ram[mem2->next])->prev = ptr2;
+          if (mem2->next != MEM_SIZE_ALIGNED) {     //如果新的空闲块不是最后后一个
+            ((struct mem *)(void *)&ram[mem2->next])->prev = ptr2;  //将新空闲块的后一个指向新空闲块
           }
           MEM_STATS_INC_USED(used, (size + SIZEOF_STRUCT_MEM));
         } else {

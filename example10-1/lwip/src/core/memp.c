@@ -340,6 +340,7 @@ memp_init(void)
   struct memp *memp;
   u16_t i, j;
 
+//
   for (i = 0; i < MEMP_MAX; ++i) {
     MEMP_STATS_AVAIL(used, i, 0);
     MEMP_STATS_AVAIL(max, i, 0);
@@ -348,7 +349,7 @@ memp_init(void)
   }
 
 #if !MEMP_SEPARATE_POOLS
-  memp = (struct memp *)LWIP_MEM_ALIGN(memp_memory);
+  memp = (struct memp *)LWIP_MEM_ALIGN(memp_memory);    //对内存池的起始地址进行对齐
 #endif /* !MEMP_SEPARATE_POOLS */
   /* for every pool: */
   for (i = 0; i < MEMP_MAX; ++i) {

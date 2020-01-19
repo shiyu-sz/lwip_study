@@ -119,6 +119,7 @@ static err_t PacketSend (struct pbuf *p)
 	if(templen == p->tot_len)
 	{
 		enc28j60PacketSend(templen, MySendbuf);		   //调用网卡发送函数
+		printf("send len = %d \n", templen);
 		return ERR_OK; 
 	}
 	
@@ -148,8 +149,10 @@ struct pbuf *PacketReceive(struct netif *netif)
 	{
 	    return NULL;
 	}
+
+    printf("recvlen = %d \n", recvlen);
 	
-	//申请内核pbuf空间，为RAM类型
+	//申请内核pbuf空间，为RAM类型，此处给pbuf的len字段赋值
 	p = pbuf_alloc(PBUF_RAW, recvlen, PBUF_RAM);
 	
 	if(!p)			       //申请失败，则返回空
@@ -265,7 +268,9 @@ s32_t ethernetif_input(struct netif *netif)
   {
   	return 0;
   }
-  /* points to packet payload, which starts with an Ethernet header */
+  /* points to packet payload, which starts with an Ethernet header
+    指向以以太网报头开头的数据包有效负载
+  */
   ethhdr = p->payload;
 
   switch (htons(ethhdr->type)) {
@@ -277,7 +282,7 @@ s32_t ethernetif_input(struct netif *netif)
   case ETHTYPE_PPPOEDISC:
   case ETHTYPE_PPPOE:
 #endif /* PPPOE_SUPPORT */
-    /* full packet send to tcpip_thread to process */
+    /* full packet send to tcpip_thread to process 完整的数据包发送到tcpip_thread进行处理 */
     if (netif->input(p, netif)!=ERR_OK)
      { LWIP_DEBUGF(NETIF_DEBUG, ("ethernetif_input: IP input error\n"));
        pbuf_free(p);

@@ -4,12 +4,24 @@
 #include "misc.h"
 #include <stdio.h>	 
 #include  <stdarg.h>
+#include "enc28j60.h"
+#include <string.h>
 
-
+void delay_ms(int x)
+{
+    int i, j;
+    for(i = 0; i < x; i++)
+    {
+        for(j = 0; j < 1000; j ++);
+    }
+}
 
 //extern functions	
 extern void SPI1_Init(void);
 extern void lwip_demo(void *pdata);
+void lwip_init_task(void);
+void mymacinit(unsigned char *mymac);
+
 
 void GPIO_Configuration(void);
 void RCC_Configuration(void);
@@ -123,10 +135,10 @@ void GPIO_Configuration(void)
                          RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD |
                          RCC_APB2Periph_GPIOE, ENABLE);
   	
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;				     //LED1控制
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;				     //LED1控制
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-  GPIO_Init(GPIOB, &GPIO_InitStructure);					 
+  GPIO_Init(GPIOA, &GPIO_InitStructure);					 
 
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6|GPIO_Pin_3;		 //LED2, LED3控制
   GPIO_Init(GPIOD, &GPIO_InitStructure);
@@ -162,7 +174,7 @@ void GPIO_Configuration(void)
 * 说    明：
 * 调用方法：无 
 ****************************************************************************/
- 
+
 int main(void)
 {
 	RCC_Configuration();				 //系统时钟设置
@@ -192,11 +204,16 @@ int main(void)
 	
 	lwip_demo(NULL);	  //初始化内核，启动LwIP相关
 	 
-		//init LwIP
+    //init LwIP
 	//lwip_init_task();
-		
+
+   
 	while (1)
 	{
+        delay_ms(1000);
+        GPIO_WriteBit(GPIOA, GPIO_Pin_8, 1);
+        delay_ms(1000);
+        GPIO_WriteBit(GPIOA, GPIO_Pin_8, 0);
 	    //exit(0);	
 	}
 }

@@ -65,7 +65,7 @@ typedef enum {
 /** indicates this packet's data should be immediately passed to the application */
 #define PBUF_FLAG_PUSH      0x01U
 /** indicates this is a custom pbuf: pbuf_free and pbuf_header handle such a
-    a pbuf differently */
+    a pbuf differently 表示这是一个自定义pbuf：pbuf_free和pbuf_header处理这种pbuf的方式有所不同 */
 #define PBUF_FLAG_IS_CUSTOM 0x02U
 /** indicates this pbuf is UDP multicast to be looped back */
 #define PBUF_FLAG_MCASTLOOP 0x04U
@@ -77,10 +77,10 @@ typedef enum {
 #define PBUF_FLAG_TCP_FIN   0x20U
 
 struct pbuf {
-  /** next pbuf in singly linked pbuf chain */
+  /** next pbuf in singly linked pbuf chain 指向下个包 */
   struct pbuf *next;
 
-  /** pointer to the actual data in the buffer */
+  /** pointer to the actual data in the buffer 本个包的数据域指针 */
   void *payload;
 
   /**
@@ -89,10 +89,11 @@ struct pbuf {
    *
    * For non-queue packet chains this is the invariant:
    * p->tot_len == p->len + (p->next? p->next->tot_len: 0)
+   当前包和当前包后面所有的包的数据长度
    */
   u16_t tot_len;
 
-  /** length of this buffer */
+  /** length of this buffer 当前包数据域的长度 */
   u16_t len;
 
   /** pbuf_type as u8_t instead of enum to save space */

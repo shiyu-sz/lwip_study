@@ -584,15 +584,16 @@ pbuf_header(struct pbuf *p, s16_t header_size_increment)
 /**
  * Dereference a pbuf chain or queue and deallocate any no-longer-used
  * pbufs at the head of this chain or queue.
- *
+ *  取消引用pbuf链或队列，并在该链或队列的开头取消分配所有不再使用的pbuf。
  * Decrements the pbuf reference count. If it reaches zero, the pbuf is
  * deallocated.
- *
+ *  减少pbuf参考计数。如果达到零，则将pbuf释放。
  * For a pbuf chain, this is repeated for each pbuf in the chain,
  * up to the first pbuf which has a non-zero reference count after
  * decrementing. So, when all reference counts are one, the whole
  * chain is free'd.
- *
+ *  对于pbuf链，将对链中的每个pbuf重复此操作，直到减量后直到第一个具有非零引用计数的pbuf。
+    因此，当所有引用计数均为1时，整个*链将被释放。
  * @param p The pbuf (chain) to be dereferenced.
  *
  * @return the number of pbufs that were de-allocated
@@ -639,6 +640,7 @@ pbuf_free(struct pbuf *p)
   count = 0;
   /* de-allocate all consecutive pbufs from the head of the chain that
    * obtain a zero reference count after decrementing*/
+   //循环释放，直到有pbuf为空
   while (p != NULL) {
     u16_t ref;
     SYS_ARCH_DECL_PROTECT(old_level);
@@ -649,9 +651,11 @@ pbuf_free(struct pbuf *p)
     /* all pbufs in a chain are referenced at least once */
     LWIP_ASSERT("pbuf_free: p->ref > 0", p->ref > 0);
     /* decrease reference count (number of pointers to pbuf) */
+    //将pbuf引用次数减1
     ref = --(p->ref);
     SYS_ARCH_UNPROTECT(old_level);
     /* this pbuf is no longer referenced to? */
+    //如果pbuf引用次数为0，表示这个pbuf可以被释放
     if (ref == 0) {
       /* remember next pbuf in chain for next iteration */
       q = p->next;
@@ -677,14 +681,17 @@ pbuf_free(struct pbuf *p)
           mem_free(p);
         }
       }
+        //记录pbuf被free的个数
       count++;
       /* proceed to next pbuf */
+      //将下一个pbuf赋给p
       p = q;
     /* p->ref > 0, this pbuf is still referenced to */
     /* (and so the remaining pbufs in chain as well) */
     } else {
       LWIP_DEBUGF( PBUF_DEBUG | LWIP_DBG_TRACE, ("pbuf_free: %p has ref %"U16_F", ending here.\n", (void *)p, ref));
       /* stop walking through the chain */
+      //停止沿着链条走,注意，这个操作并不会改变pbuf链接表，如果要改变，p要传双重指针
       p = NULL;
     }
   }

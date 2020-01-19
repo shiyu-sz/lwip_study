@@ -312,7 +312,7 @@ netif_find(char *name)
 
 /**
  * Change the IP address of a network interface
- *
+ *  更改网络接口的IP地址
  * @param netif the network interface to change
  * @param ipaddr the new IP address
  *
@@ -329,6 +329,7 @@ netif_set_ipaddr(struct netif *netif, ip_addr_t *ipaddr)
   struct tcp_pcb_listen *lpcb;
 
   /* address is actually being changed? */
+  //如果地址有更改
   if (ipaddr && (ip_addr_cmp(ipaddr, &(netif->ip_addr))) == 0) {
     /* extern struct tcp_pcb *tcp_active_pcbs; defined by tcp.h */
     LWIP_DEBUGF(NETIF_DEBUG | LWIP_DBG_STATE, ("netif_set_ipaddr: netif address being changed\n"));

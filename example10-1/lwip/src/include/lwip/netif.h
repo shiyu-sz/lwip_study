@@ -131,10 +131,13 @@ typedef err_t (*netif_igmp_mac_filter_fn)(struct netif *netif,
        ip_addr_t *group, u8_t action);
 
 /** Generic data structure used for all lwIP network interfaces.
+    用于所有lwIP网络接口的通用数据结构。
  *  The following fields should be filled in by the initialization
- *  function for the device driver: hwaddr_len, hwaddr[], mtu, flags */
+ *  function for the device driver: hwaddr_len, hwaddr[], mtu, flags
+    设备驱动程序的初始化函数应填写以下字段：hwaddr_len，hwaddr []，mtu，flags
+    */
 struct netif {
-  /** pointer to next in linked list */
+  /** pointer to next in linked list 指向下一个netif结构 */
   struct netif *next;
 
   /** IP address configuration in network byte order */
@@ -143,15 +146,15 @@ struct netif {
   ip_addr_t gw;
 
   /** This function is called by the network device driver
-   *  to pass a packet up the TCP/IP stack. */
+   *  to pass a packet up the TCP/IP stack. 这个函数将网络设备接收到的数据提交给IP层 */
   netif_input_fn input;
   /** This function is called by the IP module when it wants
    *  to send a packet on the interface. This function typically
-   *  first resolves the hardware address, then sends the packet. */
+   *  first resolves the hardware address, then sends the packet. 将IP层数据包发送到目的地址 */
   netif_output_fn output;
   /** This function is called by the ARP module when it wants
    *  to send a packet on the interface. This function outputs
-   *  the pbuf as-is on the link medium. */
+   *  the pbuf as-is on the link medium. ARP模块用，将以太网数据帧发送 */
   netif_linkoutput_fn linkoutput;
 #if LWIP_NETIF_STATUS_CALLBACK
   /** This function is called when the netif state is set to up or down
@@ -182,7 +185,7 @@ struct netif {
   /* the hostname for this netif, NULL is a valid value */
   char*  hostname;
 #endif /* LWIP_NETIF_HOSTNAME */
-  /** maximum transfer unit (in bytes) */
+  /** maximum transfer unit (in bytes) 表示网络接口可以传送最大数据包长度 */
   u16_t mtu;
   /** number of bytes used in hwaddr */
   u8_t hwaddr_len;

@@ -1269,6 +1269,8 @@ etharp_request(struct netif *netif, ip_addr_t *ipaddr)
  * Process received ethernet frames. Using this function instead of directly
  * calling ip_input and passing ARP frames through etharp in ethernetif_input,
  * the ARP cache is protected from concurrent access.
+ 处理收到的以太网帧。使用此功能，而不是直接调用ip_input并通过ethernetif_input中
+ 的etharp传递ARP帧，可以保护ARP缓存免受并发访问。
  *
  * @param p the recevied packet, p->payload pointing to the ethernet header
  * @param netif the network interface on which the packet was received

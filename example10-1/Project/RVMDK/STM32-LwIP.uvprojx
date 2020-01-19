@@ -14,7 +14,7 @@
         <TargetCommonOption>
           <Device>STM32F103RC</Device>
           <Vendor>STMicroelectronics</Vendor>
-          <PackID>Keil.STM32F1xx_DFP.2.1.0</PackID>
+          <PackID>Keil.STM32F1xx_DFP.2.3.0</PackID>
           <PackURL>http://www.keil.com/pack/</PackURL>
           <Cpu>IROM(0x08000000,0x40000) IRAM(0x20000000,0xC000) CPUTYPE("Cortex-M3") CLOCK(12000000) ELITTLE</Cpu>
           <FlashUtilSpec></FlashUtilSpec>
@@ -171,11 +171,11 @@
             <RunIndependent>0</RunIndependent>
             <UpdateFlashBeforeDebugging>1</UpdateFlashBeforeDebugging>
             <Capability>1</Capability>
-            <DriverSelection>4098</DriverSelection>
+            <DriverSelection>4096</DriverSelection>
           </Flash1>
           <bUseTDR>1</bUseTDR>
           <Flash2>BIN\UL2CM3.DLL</Flash2>
-          <Flash3></Flash3>
+          <Flash3>"" ()</Flash3>
           <Flash4></Flash4>
           <pFcarmOut></pFcarmOut>
           <pFcarmGrp></pFcarmGrp>
@@ -365,7 +365,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F10X_HD, USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\Libraries\CMSIS\;..\..\Libraries\STM32F10x_StdPeriph_Driver\inc;..\..\lwip\src\api;..\..\lwip\src\arch;..\..\lwip\src\include;..\..\lwip\src\netif;..\..\lwip\src\include\ipv4;..\..\Source\inc;..\..\lwip\src</IncludePath>
+              <IncludePath>..\..\Libraries\CMSIS\;..\..\Libraries\STM32F10x_StdPeriph_Driver\inc;..\..\lwip\src\api;..\..\lwip\src\arch;..\..\lwip\src\include;..\..\lwip\src\netif;..\..\lwip\src\include\ipv4;..\..\Source\inc;..\..\lwip\src;..\..\lwip\src\include\netif;..\..\lwip\src\include\ipv4\lwip</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -542,6 +542,11 @@
               <FileName>slipif.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\lwip\src\netif\slipif.c</FilePath>
+            </File>
+            <File>
+              <FileName>ethernet_ii.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\lwip\src\netif\ethernet_ii.c</FilePath>
             </File>
           </Files>
         </Group>
