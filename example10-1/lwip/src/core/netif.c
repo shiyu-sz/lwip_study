@@ -186,8 +186,8 @@ netif_add(struct netif *netif, ip_addr_t *ipaddr, ip_addr_t *netmask,
   }
 
   /* add this netif to the list */
-  netif->next = netif_list;
-  netif_list = netif;
+  netif->next = netif_list;     //将netif放到链表头
+  netif_list = netif;           //更新链表的头
   snmp_inc_iflist();
 
 #if LWIP_IGMP
@@ -629,7 +629,7 @@ netif_loop_output(struct netif *netif, struct pbuf *p,
   SYS_ARCH_DECL_PROTECT(lev);
   LWIP_UNUSED_ARG(ipaddr);
 
-  /* Allocate a new pbuf */
+  /* Allocate a new pbuf 这里分配的是pbuf链表数据的总大小 */
   r = pbuf_alloc(PBUF_LINK, p->tot_len, PBUF_RAM);
   if (r == NULL) {
     LINK_STATS_INC(link.memerr);
@@ -651,7 +651,7 @@ netif_loop_output(struct netif *netif, struct pbuf *p,
   netif->loop_cnt_current += clen;
 #endif /* LWIP_LOOPBACK_MAX_PBUFS */
 
-  /* Copy the whole pbuf queue p into the single pbuf r */
+  /* Copy the whole pbuf queue p into the single pbuf r 将整个pbuf队列p复制到单个pbuf r */
   if ((err = pbuf_copy(r, p)) != ERR_OK) {
     pbuf_free(r);
     LINK_STATS_INC(link.memerr);
@@ -663,7 +663,7 @@ netif_loop_output(struct netif *netif, struct pbuf *p,
   /* Put the packet on a linked list which gets emptied through calling
      netif_poll(). */
 
-  /* let last point to the last pbuf in chain r */
+  /* let last point to the last pbuf in chain r 让last指向r中的最后一个pbuf */
   for (last = r; last->next != NULL; last = last->next);
 
   SYS_ARCH_PROTECT(lev);
@@ -723,16 +723,17 @@ netif_poll(struct netif *netif)
         ((netif->loop_cnt_current - clen) < netif->loop_cnt_current));
       netif->loop_cnt_current -= clen;
 #endif /* LWIP_LOOPBACK_MAX_PBUFS */
+        //如果当前包的len不等于tot_len，说明当前的包不是最后一个包
       while (in_end->len != in_end->tot_len) {
         LWIP_ASSERT("bogus pbuf: len != tot_len but next == NULL!", in_end->next != NULL);
         in_end = in_end->next;
       }
-      /* 'in_end' now points to the last pbuf from 'in' */
+      /* 'in_end' now points to the last pbuf from 'in' 如果整个链表只有一个数据包 */
       if (in_end == netif->loop_last) {
-        /* this was the last pbuf in the list */
+        /* this was the last pbuf in the list 将指针归零 */
         netif->loop_first = netif->loop_last = NULL;
       } else {
-        /* pop the pbuf off the list */
+        /* pop the pbuf off the list loop_first指令向下一个包 */
         netif->loop_first = in_end->next;
         LWIP_ASSERT("should not be null since first != last!", netif->loop_first != NULL);
       }
@@ -745,14 +746,14 @@ netif_poll(struct netif *netif)
       LINK_STATS_INC(link.recv);
       snmp_add_ifinoctets(stats_if, in->tot_len);
       snmp_inc_ifinucastpkts(stats_if);
-      /* loopback packets are always IP packets! */
+      /* loopback packets are always IP packets! 调用IP层输入函数，处理数据包 */
       if (ip_input(in, netif) != ERR_OK) {
         pbuf_free(in);
       }
       /* Don't reference the packet any more! */
       in = NULL;
     }
-  /* go on while there is a packet on the list */
+  /* go on while there is a packet on the list 如果loop_first中还有数据，继续提交 */
   } while (netif->loop_first != NULL);
 }
 

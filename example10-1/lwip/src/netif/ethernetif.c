@@ -249,7 +249,9 @@ low_level_input(struct netif *netif)
  * should handle the actual reception of bytes from the network
  * interface. Then the type of the received packet is determined and
  * the appropriate input function is called.
- *
+ *  当准备好从接口读取数据包时，应调用此函数。
+    它使用函数low_level_input（）应该处理来自网络接口的实际字节接收。
+    然后确定接收到的数据包的类型，并调用适当的输入函数。
  * @param netif the lwip network interface structure for this ethernetif
  */
 
@@ -273,6 +275,7 @@ s32_t ethernetif_input(struct netif *netif)
   */
   ethhdr = p->payload;
 
+    //判断帧类型
   switch (htons(ethhdr->type)) {
   /* IP or ARP packet? */
   case ETHTYPE_IP:

@@ -117,10 +117,11 @@ void lwip_demo(void *pdata)
         time_now = sys_now();
         if( (time_now - time_perv) > 2*1000 )
         {
+            /*
             ret = ethernet_ii_raw(&enc28j60_netif, (struct eth_addr *)src_mac.addr, 
                 (struct eth_addr *)des_mac.addr, sendbuff, ETHERNET_II_DATA_LEN);
 	        printf("ethernet_ii_raw = %d \n", ret);
-	        
+	        */
             
             time_perv = time_now;
         }

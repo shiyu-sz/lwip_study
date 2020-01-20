@@ -12,7 +12,7 @@ void delay_ms(int x)
     int i, j;
     for(i = 0; i < x; i++)
     {
-        for(j = 0; j < 1000; j ++);
+        for(j = 0; j < 5000; j ++);
     }
 }
 
@@ -135,7 +135,7 @@ void GPIO_Configuration(void)
                          RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD |
                          RCC_APB2Periph_GPIOE, ENABLE);
   	
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;				     //LED1控制
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_4;				     //LED1控制
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(GPIOA, &GPIO_InitStructure);					 
@@ -159,10 +159,10 @@ void GPIO_Configuration(void)
   GPIO_Init(GPIOA, &GPIO_InitStructure);		 
 
 
-//  GPIO_ResetBits(GPIOE, GPIO_Pin_1);						 //复位ENC28J60
-//  Delay(0xAFFF);					   
-//  GPIO_SetBits(GPIOE, GPIO_Pin_1 );		 	 	             
-//  Delay(0xAFFF);	
+  GPIO_ResetBits(GPIOA, GPIO_Pin_4);						 //复位ENC28J60
+  delay_ms(1000);					   
+  GPIO_SetBits(GPIOA, GPIO_Pin_4);		 	 	             
+  delay_ms(1000);	
 }
 
 
@@ -213,8 +213,7 @@ int main(void)
         delay_ms(1000);
         GPIO_WriteBit(GPIOA, GPIO_Pin_8, 1);
         delay_ms(1000);
-        GPIO_WriteBit(GPIOA, GPIO_Pin_8, 0);
-	    //exit(0);	
+        GPIO_WriteBit(GPIOA, GPIO_Pin_8, 0);	
 	}
 }
 

@@ -117,6 +117,7 @@ struct etharp_entry {
   u8_t ctime;
 };
 
+//arp缓存表
 static struct etharp_entry arp_table[ARP_TABLE_SIZE];
 
 #if !LWIP_NETIF_HWADDRHINT
@@ -460,7 +461,9 @@ etharp_update_arp_entry(struct netif *netif, ip_addr_t *ipaddr, struct eth_addr 
     LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE, ("etharp_update_arp_entry: will not add non-unicast IP address to ARP cache\n"));
     return ERR_ARG;
   }
-  /* find or create ARP entry */
+  /* find or create ARP entry 
+    查找IP地址是否在ARP表中，如果不在就创建一个条目，返回条目的索引
+  */
   i = etharp_find_entry(ipaddr, flags);
   /* bail out if no entry could be found */
   if (i < 0) {
@@ -486,10 +489,11 @@ etharp_update_arp_entry(struct netif *netif, ip_addr_t *ipaddr, struct eth_addr 
   LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE, ("etharp_update_arp_entry: updating stable entry %"S16_F"\n", (s16_t)i));
   /* update address */
   ETHADDR32_COPY(&arp_table[i].ethaddr, ethaddr);
-  /* reset time stamp */
+  /* reset time stamp 复位ARP的计时器 */
   arp_table[i].ctime = 0;
   /* this is where we will send out queued packets! */
 #if ARP_QUEUEING
+    //如果ARP表中有未发送的数据
   while (arp_table[i].q != NULL) {
     struct pbuf *p;
     /* remember remainder of queue */
@@ -505,7 +509,7 @@ etharp_update_arp_entry(struct netif *netif, ip_addr_t *ipaddr, struct eth_addr 
     struct pbuf *p = arp_table[i].q;
     arp_table[i].q = NULL;
 #endif /* ARP_QUEUEING */
-    /* send the queued IP packet */
+    /* send the queued IP packet 发送排队的IP数据包 */
     etharp_send_ip(netif, p, (struct eth_addr*)(netif->hwaddr), ethaddr);
     /* free the queued IP packet */
     pbuf_free(p);
@@ -655,7 +659,7 @@ etharp_ip_input(struct netif *netif, struct pbuf *p)
 
   ip_addr_copy(iphdr_src, iphdr->src);
 
-  /* source is not on the local network? */
+  /* source is not on the local network? 收到的IP包源地址是自已，直接跳出 */
   if (!ip_addr_netcmp(&iphdr_src, &(netif->ip_addr), &(netif->netmask))) {
     /* do nothing */
     return;
@@ -664,7 +668,8 @@ etharp_ip_input(struct netif *netif, struct pbuf *p)
   LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE, ("etharp_ip_input: updating ETHARP table.\n"));
   /* update the source IP address in the cache, if present */
   /* @todo We could use ETHARP_FLAG_TRY_HARD if we think we are going to talk
-   * back soon (for example, if the destination IP address is ours. */
+   * back soon (for example, if the destination IP address is ours.
+   * 用源IP地址和源mac地址更新ARP*/
   etharp_update_arp_entry(netif, &iphdr_src, &(ethhdr->src), ETHARP_FLAG_FIND_ONLY);
 }
 #endif /* ETHARP_TRUST_IP_MAC */
@@ -710,8 +715,8 @@ etharp_arp_input(struct netif *netif, struct eth_addr *ethaddr, struct pbuf *p)
     return;
   }
 
-  ethhdr = (struct eth_hdr *)p->payload;
-  hdr = (struct etharp_hdr *)((u8_t*)ethhdr + SIZEOF_ETH_HDR);
+  ethhdr = (struct eth_hdr *)p->payload;    //取出以太网帧首部
+  hdr = (struct etharp_hdr *)((u8_t*)ethhdr + SIZEOF_ETH_HDR);  //取出ARP包首部
 #if ETHARP_SUPPORT_VLAN
   if (ethhdr->type == PP_HTONS(ETHTYPE_VLAN)) {
     hdr = (struct etharp_hdr *)(((u8_t*)ethhdr) + SIZEOF_ETH_HDR + SIZEOF_VLAN_HDR);
@@ -745,42 +750,47 @@ etharp_arp_input(struct netif *netif, struct eth_addr *ethaddr, struct pbuf *p)
   IPADDR2_COPY(&sipaddr, &hdr->sipaddr);
   IPADDR2_COPY(&dipaddr, &hdr->dipaddr);
 
-  /* this interface is not configured? */
+  /* this interface is not configured? 这个接口没有配置？ */
   if (ip_addr_isany(&netif->ip_addr)) {
     for_us = 0;
   } else {
-    /* ARP packet directed to us? */
+    /* ARP packet directed to us? 这个ARP包是不是发送给我们的 */
     for_us = (u8_t)ip_addr_cmp(&dipaddr, &(netif->ip_addr));
   }
 
   /* ARP message directed to us?
       -> add IP address in ARP cache; assume requester wants to talk to us,
          can result in directly sending the queued packets for this host.
+         在ARP缓存中添加IP地址；假设请求者想要与我们交谈，可能会导致直接为此主机发送排队的数据包。
      ARP message not directed to us?
-      ->  update the source IP address in the cache, if present */
+      ->  update the source IP address in the cache, if present 
+         更新缓存中的源IP地址（如果存在）
+ */
   etharp_update_arp_entry(netif, &sipaddr, &(hdr->shwaddr),
                    for_us ? ETHARP_FLAG_TRY_HARD : ETHARP_FLAG_FIND_ONLY);
 
-  /* now act on the message itself */
+  /* now act on the message itself 现在根据消息本身采取行动 */
   switch (hdr->opcode) {
-  /* ARP request? */
+  /* ARP request? 如果是ARP请求包 */
   case PP_HTONS(ARP_REQUEST):
     /* ARP request. If it asked for our address, we send out a
      * reply. In any case, we time-stamp any existing ARP entry,
      * and possiby send out an IP packet that was queued on it. */
 
     LWIP_DEBUGF (ETHARP_DEBUG | LWIP_DBG_TRACE, ("etharp_arp_input: incoming ARP request\n"));
-    /* ARP request for our address? */
+    /* ARP request for our address? ARP请求的IP地址与本机地址一致 */
     if (for_us) {
 
       LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE, ("etharp_arp_input: replying to ARP request for our IP address\n"));
       /* Re-use pbuf to send ARP reply.
          Since we are re-using an existing pbuf, we can't call etharp_raw since
-         that would allocate a new pbuf. */
+         that would allocate a new pbuf. 
+         因为ARP请求和ARP应答包的格式是一样的，所以直接将操作码置为ARP应答 
+      */
       hdr->opcode = htons(ARP_REPLY);
 
-      IPADDR2_COPY(&hdr->dipaddr, &hdr->sipaddr);
-      IPADDR2_COPY(&hdr->sipaddr, &netif->ip_addr);
+      IPADDR2_COPY(&hdr->dipaddr, &hdr->sipaddr);   //对方的源地址就是应答包的目的地址
+      IPADDR2_COPY(&hdr->sipaddr, &netif->ip_addr); //本机的IP就是源地址
 
       LWIP_ASSERT("netif->hwaddr_len must be the same as ETHARP_HWADDR_LEN for etharp!",
                   (netif->hwaddr_len == ETHARP_HWADDR_LEN));
@@ -791,19 +801,19 @@ etharp_arp_input(struct netif *netif, struct eth_addr *ethaddr, struct pbuf *p)
       ethdst_hwaddr = ip_addr_islinklocal(&netif->ip_addr) ? (u8_t*)(ethbroadcast.addr) : hdr->shwaddr.addr;
 #endif /* LWIP_AUTOIP */
 
-      ETHADDR16_COPY(&hdr->dhwaddr, &hdr->shwaddr);
+      ETHADDR16_COPY(&hdr->dhwaddr, &hdr->shwaddr); //对方的MAC就是应答包的目的MAC
 #if LWIP_AUTOIP
       ETHADDR16_COPY(&ethhdr->dest, ethdst_hwaddr);
 #else  /* LWIP_AUTOIP */
       ETHADDR16_COPY(&ethhdr->dest, &hdr->shwaddr);
 #endif /* LWIP_AUTOIP */
-      ETHADDR16_COPY(&hdr->shwaddr, ethaddr);
-      ETHADDR16_COPY(&ethhdr->src, ethaddr);
+      ETHADDR16_COPY(&hdr->shwaddr, ethaddr);   //将本机的MAC给ARP应答包的源MAC
+      ETHADDR16_COPY(&ethhdr->src, ethaddr);    //将本机的MAC给以太网帧头
 
       /* hwtype, hwaddr_len, proto, protolen and the type in the ethernet header
          are already correct, we tested that before */
 
-      /* return ARP reply */
+      /* return ARP reply 返回ARP回复 */
       netif->linkoutput(netif, p);
     /* we are not configured? */
     } else if (ip_addr_isany(&netif->ip_addr)) {
@@ -815,7 +825,7 @@ etharp_arp_input(struct netif *netif, struct eth_addr *ethaddr, struct pbuf *p)
       LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE, ("etharp_arp_input: ARP request was not for us.\n"));
     }
     break;
-  case PP_HTONS(ARP_REPLY):
+  case PP_HTONS(ARP_REPLY): //如果是ARP响应包，什么都不做
     /* ARP reply. We already updated the ARP cache earlier. */
     LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE, ("etharp_arp_input: incoming ARP reply\n"));
 #if (LWIP_DHCP && DHCP_DOES_ARP_CHECK)
@@ -859,14 +869,14 @@ etharp_output_to_arp_index(struct netif *netif, struct pbuf *q, u8_t arp_idx)
 
 /**
  * Resolve and fill-in Ethernet address header for outgoing IP packet.
- *
+ *  解析并填写出站IP数据包的以太网地址标头。
  * For IP multicast and broadcast, corresponding Ethernet addresses
  * are selected and the packet is transmitted on the link.
- *
+ *  对于IP多播和广播，选择相应的以太网地址，然后在链路上传输数据包。
  * For unicast addresses, the packet is submitted to etharp_query(). In
  * case the IP address is outside the local network, the IP address of
  * the gateway is used.
- *
+ *  对于单播地址，数据包将提交到etharp_query（）。如果IP地址在本地网络之外，则使用网关的IP地址。
  * @param netif The lwIP network interface which the IP packet will be sent on.
  * @param q The pbuf(s) containing the IP packet to be sent.
  * @param ipaddr The IP address of the packet destination.
@@ -886,7 +896,7 @@ etharp_output(struct netif *netif, struct pbuf *q, ip_addr_t *ipaddr)
   LWIP_ASSERT("q != NULL", q != NULL);
   LWIP_ASSERT("ipaddr != NULL", ipaddr != NULL);
 
-  /* make room for Ethernet header - should not fail */
+  /* make room for Ethernet header - should not fail 为以太网头腾出空间-不应失败 */
   if (pbuf_header(q, sizeof(struct eth_hdr)) != 0) {
     /* bail out */
     LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_SERIOUS,
@@ -898,26 +908,26 @@ etharp_output(struct netif *netif, struct pbuf *q, ip_addr_t *ipaddr)
   /* Determine on destination hardware address. Broadcasts and multicasts
    * are special, other IP addresses are looked up in the ARP table. */
 
-  /* broadcast destination IP address? */
+  /* broadcast destination IP address? 广播目标IP地址？ */
   if (ip_addr_isbroadcast(ipaddr, netif)) {
     /* broadcast on Ethernet also */
-    dest = (struct eth_addr *)&ethbroadcast;
-  /* multicast destination IP address? */
+    dest = (struct eth_addr *)&ethbroadcast;    //目录指向广播MAC地址
+  /* multicast destination IP address? 多播目标IP地址？ */
   } else if (ip_addr_ismulticast(ipaddr)) {
-    /* Hash IP multicast address to MAC address.*/
+    /* Hash IP multicast address to MAC address. 构造多播MAC地址 */
     mcastaddr.addr[0] = LL_MULTICAST_ADDR_0;
     mcastaddr.addr[1] = LL_MULTICAST_ADDR_1;
     mcastaddr.addr[2] = LL_MULTICAST_ADDR_2;
     mcastaddr.addr[3] = ip4_addr2(ipaddr) & 0x7f;
     mcastaddr.addr[4] = ip4_addr3(ipaddr);
     mcastaddr.addr[5] = ip4_addr4(ipaddr);
-    /* destination Ethernet address is multicast */
+    /* destination Ethernet address is multicast 目录指向多播MAC地址 */
     dest = &mcastaddr;
-  /* unicast destination IP address? */
+  /* unicast destination IP address? 单播目标IP地址？ */
   } else {
     s8_t i;
     /* outside local network? if so, this can neither be a global broadcast nor
-       a subnet broadcast. */
+       a subnet broadcast. 在本地网络之外？如果是这样，则它既不能是全局广播，也不能是子网广播。 */
     if (!ip_addr_netcmp(ipaddr, &(netif->ip_addr), &(netif->netmask)) &&
         !ip_addr_islinklocal(ipaddr)) {
 #if LWIP_AUTOIP
@@ -930,13 +940,13 @@ etharp_output(struct netif *netif, struct pbuf *q, ip_addr_t *ipaddr)
       if (!ip_addr_islinklocal(&iphdr->src))
 #endif /* LWIP_AUTOIP */
       {
-        /* interface has default gateway? */
+        /* interface has default gateway? 接口有默认网关？ */
         if (!ip_addr_isany(&netif->gw)) {
-          /* send to hardware address of default gateway IP address */
+          /* send to hardware address of default gateway IP address 发送到默认网关IP地址的硬件地址 */
           dst_addr = &(netif->gw);
-        /* no default gateway available */
+        /* no default gateway available 没有可用的默认网关 */
         } else {
-          /* no route to destination error (default gateway missing) */
+          /* no route to destination error (default gateway missing) 没有路由到目标错误（缺少默认网关） */
           return ERR_RTE;
         }
       }
@@ -969,13 +979,16 @@ etharp_output(struct netif *netif, struct pbuf *q, ip_addr_t *ipaddr)
       }
     }
     /* no stable entry found, use the (slower) query function:
-       queue on destination Ethernet address belonging to ipaddr */
+       queue on destination Ethernet address belonging to ipaddr
+       对于单播包，查找IP对应的MAC再发送
+    */
     return etharp_query(netif, dst_addr, q);
   }
 
-  /* continuation for multicast/broadcast destinations */
-  /* obtain source Ethernet address of the given interface */
-  /* send packet directly on the link */
+  /* continuation for multicast/broadcast destinations   */
+  /* obtain source Ethernet address of the given interface  */
+  /* send packet directly on the link 
+  多播/广播由于得到了它们目的的MAC地址，直接在链接上发送数据包 */
   return etharp_send_ip(netif, q, (struct eth_addr*)(netif->hwaddr), dest);
 }
 
@@ -1027,7 +1040,7 @@ etharp_query(struct netif *netif, ip_addr_t *ipaddr, struct pbuf *q)
     return ERR_ARG;
   }
 
-  /* find entry in ARP cache, ask to create entry if queueing packet */
+  /* find entry in ARP cache, ask to create entry if queueing packet 先查找ARP */
   i = etharp_find_entry(ipaddr, ETHARP_FLAG_TRY_HARD);
 
   /* could not find or create entry? */
@@ -1040,7 +1053,7 @@ etharp_query(struct netif *netif, ip_addr_t *ipaddr, struct pbuf *q)
     return (err_t)i;
   }
 
-  /* mark a fresh entry as pending (we just sent a request) */
+  /* mark a fresh entry as pending (we just sent a request) 将新条目标记为待处理（我们刚刚发送了请求） */
   if (arp_table[i].state == ETHARP_STATE_EMPTY) {
     arp_table[i].state = ETHARP_STATE_PENDING;
   }
@@ -1050,9 +1063,9 @@ etharp_query(struct netif *netif, ip_addr_t *ipaddr, struct pbuf *q)
   ((arp_table[i].state == ETHARP_STATE_PENDING) ||
    (arp_table[i].state >= ETHARP_STATE_STABLE)));
 
-  /* do we have a pending entry? or an implicit query request? */
+  /* do we have a pending entry? or an implicit query request? 我们有待审核的条目吗？或隐式查询请求？ */
   if ((arp_table[i].state == ETHARP_STATE_PENDING) || (q == NULL)) {
-    /* try to resolve it; send out ARP request */
+    /* try to resolve it; send out ARP request 设法解决它；发送ARP请求 */
     result = etharp_request(netif, ipaddr);
     if (result != ERR_OK) {
       /* ARP request couldn't be sent */
@@ -1067,9 +1080,9 @@ etharp_query(struct netif *netif, ip_addr_t *ipaddr, struct pbuf *q)
 
   /* packet given? */
   LWIP_ASSERT("q != NULL", q != NULL);
-  /* stable entry? */
+  /* stable entry? 稳定的状态 */
   if (arp_table[i].state >= ETHARP_STATE_STABLE) {
-    /* we have a valid IP->Ethernet address mapping */
+    /* we have a valid IP->Ethernet address mapping 我们有一个有效的IP->以太网地址映射 */
     ETHARP_SET_HINT(netif, i);
     /* send the packet */
     result = etharp_send_ip(netif, q, srcaddr, &(arp_table[i].ethaddr));
@@ -1291,7 +1304,7 @@ ethernet_input(struct pbuf *p, struct netif *netif)
     goto free_and_return;
   }
 
-  /* points to packet payload, which starts with an Ethernet header */
+  /* points to packet payload, which starts with an Ethernet header 取出以太网帧头部 */
   ethhdr = (struct eth_hdr *)p->payload;
   LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE,
     ("ethernet_input: dest:%"X8_F":%"X8_F":%"X8_F":%"X8_F":%"X8_F":%"X8_F", src:%"X8_F":%"X8_F":%"X8_F":%"X8_F":%"X8_F":%"X8_F", type:%"X16_F"\n",
@@ -1301,6 +1314,7 @@ ethernet_input(struct pbuf *p, struct netif *netif)
      (unsigned)ethhdr->src.addr[3], (unsigned)ethhdr->src.addr[4], (unsigned)ethhdr->src.addr[5],
      (unsigned)htons(ethhdr->type)));
 
+    //取出帧类型
   type = ethhdr->type;
 #if ETHARP_SUPPORT_VLAN
   if (type == PP_HTONS(ETHTYPE_VLAN)) {
@@ -1353,15 +1367,15 @@ ethernet_input(struct pbuf *p, struct netif *netif)
         goto free_and_return;
       }
 #if ETHARP_TRUST_IP_MAC
-      /* update ARP table */
+      /* update ARP table 使用IP头部及以太网头部信息更新ARP */
       etharp_ip_input(netif, p);
 #endif /* ETHARP_TRUST_IP_MAC */
-      /* skip Ethernet header */
+      /* skip Ethernet header 在payload中去掉以太网帧头部的14个字节 */
       if(pbuf_header(p, -ip_hdr_offset)) {
         LWIP_ASSERT("Can't move over header in packet", 0);
         goto free_and_return;
       } else {
-        /* pass to IP layer */
+        /* pass to IP layer 传递到IP层 */
         ip_input(p, netif);
       }
       break;
@@ -1370,7 +1384,7 @@ ethernet_input(struct pbuf *p, struct netif *netif)
       if (!(netif->flags & NETIF_FLAG_ETHARP)) {
         goto free_and_return;
       }
-      /* pass p to ARP module */
+      /* pass p to ARP module 将p传递给ARP模块 */
       etharp_arp_input(netif, (struct eth_addr*)(netif->hwaddr), p);
       break;
 #endif /* LWIP_ARP */

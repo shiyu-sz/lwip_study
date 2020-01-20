@@ -491,6 +491,8 @@ unsigned int enc28j60PacketReceive(unsigned int maxlen, unsigned char* packet)
 
 void mymacinit(unsigned char *mymac)
 {
+    
+    
     enc28j60Init(mymac);
   	enc28j60PhyWrite(PHLCON,0x0476);	
 	enc28j60clkout(2);                 // change clkout from 6.25MHz to 12.5MHz
