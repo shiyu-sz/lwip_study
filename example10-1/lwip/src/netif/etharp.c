@@ -826,7 +826,7 @@ etharp_arp_input(struct netif *netif, struct eth_addr *ethaddr, struct pbuf *p)
     }
     break;
   case PP_HTONS(ARP_REPLY): //如果是ARP响应包，什么都不做
-    /* ARP reply. We already updated the ARP cache earlier. */
+    /* ARP reply. We already updated the ARP cache earlier. 因为已经在前面更新了ARP表 */
     LWIP_DEBUGF(ETHARP_DEBUG | LWIP_DBG_TRACE, ("etharp_arp_input: incoming ARP reply\n"));
 #if (LWIP_DHCP && DHCP_DOES_ARP_CHECK)
     /* DHCP wants to know about ARP replies from any host with an

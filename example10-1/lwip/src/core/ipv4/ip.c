@@ -315,7 +315,7 @@ ip_input(struct pbuf *p, struct netif *inp)
   IP_STATS_INC(ip.recv);
   snmp_inc_ipinreceives();
 
-  /* identify the IP header */
+  /* identify the IP header 取出IP头部 */
   iphdr = (struct ip_hdr *)p->payload;
   if (IPH_V(iphdr) != 4) {
     LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_LEVEL_WARNING, ("IP packet dropped due to bad version number %"U16_F"\n", IPH_V(iphdr)));
@@ -334,14 +334,14 @@ ip_input(struct pbuf *p, struct netif *inp)
   }
 #endif
 
-  /* obtain IP header length in number of 32-bit words */
+  /* obtain IP header length in number of 32-bit words 取出首部的长度 */
   iphdr_hlen = IPH_HL(iphdr);
   /* calculate IP header length in bytes */
   iphdr_hlen *= 4;
-  /* obtain ip length in bytes */
+  /* obtain ip length in bytes	取出总长度 */
   iphdr_len = ntohs(IPH_LEN(iphdr));
 
-  /* header length exceeds first pbuf length, or ip length exceeds total pbuf length? */
+  /* header length exceeds first pbuf length, or ip length exceeds total pbuf length? 标头长度超过第一个pbuf长度，或者ip长度超过总pbuf长度？ */
   if ((iphdr_hlen > p->len) || (iphdr_len > p->tot_len)) {
     if (iphdr_hlen > p->len) {
       LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_LEVEL_SERIOUS,
@@ -361,7 +361,7 @@ ip_input(struct pbuf *p, struct netif *inp)
     return ERR_OK;
   }
 
-  /* verify checksum */
+  /* verify checksum 对首部进行校验 */
 #if CHECKSUM_CHECK_IP
   if (inet_chksum(iphdr, iphdr_hlen) != 0) {
 
@@ -377,7 +377,8 @@ ip_input(struct pbuf *p, struct netif *inp)
 #endif
 
   /* Trim pbuf. This should have been done at the netif layer,
-   * but we'll do it anyway just to be sure that its done. */
+   * but we'll do it anyway just to be sure that its done.
+   修剪pbuf。这应该在netif层完成，但我们还是要这样做，以确保已完成 */
   pbuf_realloc(p, iphdr_len);
 
   /* copy IP addresses to aligned ip_addr_t */

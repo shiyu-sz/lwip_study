@@ -446,17 +446,17 @@ pbuf_realloc(struct pbuf *p, u16_t new_len)
   }
 
   /* the pbuf chain grows by (new_len - p->tot_len) bytes
-   * (which may be negative in case of shrinking) */
+   * (which may be negative in case of shrinking) 减完后是eth报头的长度 */
   grow = new_len - p->tot_len;
 
-  /* first, step over any pbufs that should remain in the chain */
+  /* first, step over any pbufs that should remain in the chain 首先，跨过应该保留在链中的所有pbuf */
   rem_len = new_len;
   q = p;
   /* should this pbuf be kept? */
   while (rem_len > q->len) {
-    /* decrease remaining length by pbuf length */
+    /* decrease remaining length by pbuf length 通过pbuf长度减少剩余长度 */
     rem_len -= q->len;
-    /* decrease total length indicator */
+    /* decrease total length indicator 减少总长指示器 */
     LWIP_ASSERT("grow < max_u16_t", grow < 0xffff);
     q->tot_len += (u16_t)grow;
     /* proceed to next pbuf in chain */

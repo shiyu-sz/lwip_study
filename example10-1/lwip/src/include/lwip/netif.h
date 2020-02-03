@@ -68,7 +68,8 @@ extern "C" {
  */
 #define NETIF_FLAG_UP           0x01U
 /** If set, the netif has broadcast capability.
- * Set by the netif driver in its init function. */
+ * Set by the netif driver in its init function. 
+ 如果设置，则netif具有广播功能。由netif驱动程序在其init函数中设置 */
 #define NETIF_FLAG_BROADCAST    0x02U
 /** If set, the netif is one end of a point-to-point connection.
  * Set by the netif driver in its init function. */

@@ -57,19 +57,19 @@ ip4_addr_isbroadcast(u32_t addr, const struct netif *netif)
   ip_addr_t ipaddr;
   ip4_addr_set_u32(&ipaddr, addr);
 
-  /* all ones (broadcast) or all zeroes (old skool broadcast) */
+  /* all ones (broadcast) or all zeroes (old skool broadcast) 全1（广播）或全0（旧臭鼬广播） */
   if ((~addr == IPADDR_ANY) ||
       (addr == IPADDR_ANY)) {
     return 1;
-  /* no broadcast support on this network interface? */
+  /* no broadcast support on this network interface? 此网络接口上没有广播支持？ */
   } else if ((netif->flags & NETIF_FLAG_BROADCAST) == 0) {
     /* the given address cannot be a broadcast address
      * nor can we check against any broadcast addresses */
     return 0;
-  /* address matches network interface address exactly? => no broadcast */
+  /* address matches network interface address exactly? => no broadcast 地址与网络接口地址完全匹配？=>没有广播 */
   } else if (addr == ip4_addr_get_u32(&netif->ip_addr)) {
     return 0;
-  /*  on the same (sub) network... */
+  /*  on the same (sub) network... 如果网段一样，且最后是255，表示这个包是广播的 */
   } else if (ip_addr_netcmp(&ipaddr, &(netif->ip_addr), &(netif->netmask))
          /* ...and host identifier bits are all ones? =>... */
           && ((addr & ~ip4_addr_get_u32(&netif->netmask)) ==
