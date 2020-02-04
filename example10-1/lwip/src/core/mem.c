@@ -361,11 +361,13 @@ mem_free(void *rmem)
 }
 
 /**
- * Shrink memory returned by mem_malloc().
+ * Shrink memory returned by mem_malloc(). 缩小由mem_malloc（）返回的内存。
  *
  * @param rmem pointer to memory allocated by mem_malloc the is to be shrinked
+ 				指向由mem_malloc分配的内存的指针将被缩小
  * @param newsize required size after shrinking (needs to be smaller than or
  *                equal to the previous size)
+ 				缩小后所需的尺寸（必须小于或等于先前的尺寸）
  * @return for compatibility reasons: is always == rmem, at the moment
  *         or NULL if newsize is > old size, in which case rmem is NOT touched
  *         or freed!

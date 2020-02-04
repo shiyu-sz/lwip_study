@@ -386,15 +386,15 @@ ip_input(struct pbuf *p, struct netif *inp)
   ip_addr_copy(current_iphdr_src, iphdr->src);
 
   /* match packet against an interface, i.e. is this packet for us? */
-#if LWIP_IGMP
-  if (ip_addr_ismulticast(&current_iphdr_dest)) {
-    if ((inp->flags & NETIF_FLAG_IGMP) && (igmp_lookfor_group(inp, &current_iphdr_dest))) {
-      netif = inp;
-    } else {
-      netif = NULL;
-    }
-  } else
-#endif /* LWIP_IGMP */
+//#if LWIP_IGMP
+//  if (ip_addr_ismulticast(&current_iphdr_dest)) {
+//    if ((inp->flags & NETIF_FLAG_IGMP) && (igmp_lookfor_group(inp, &current_iphdr_dest))) {
+//      netif = inp;
+//    } else {
+//      netif = NULL;
+//    }
+//  } else
+//#endif /* LWIP_IGMP */
   {
     /* start trying with inp. if that's not acceptable, start walking the
        list of configured netifs.
@@ -410,9 +410,9 @@ ip_input(struct pbuf *p, struct netif *inp)
 
       /* interface is up and configured? */
       if ((netif_is_up(netif)) && (!ip_addr_isany(&(netif->ip_addr)))) {
-        /* unicast to this interface address? */
+        /* unicast to this interface address? 单播到该接口地址？ */
         if (ip_addr_cmp(&current_iphdr_dest, &(netif->ip_addr)) ||
-            /* or broadcast on this interface network address? */
+            /* or broadcast on this interface network address? 或在此接口的网络地址上广播？ */
             ip_addr_isbroadcast(&current_iphdr_dest, netif)) {
           LWIP_DEBUGF(IP_DEBUG, ("ip_input: packet accepted on interface %c%c\n",
               netif->name[0], netif->name[1]));
@@ -443,30 +443,30 @@ ip_input(struct pbuf *p, struct netif *inp)
     } while(netif != NULL);
   }
 
-#if IP_ACCEPT_LINK_LAYER_ADDRESSING
-  /* Pass DHCP messages regardless of destination address. DHCP traffic is addressed
-   * using link layer addressing (such as Ethernet MAC) so we must not filter on IP.
-   * According to RFC 1542 section 3.1.1, referred by RFC 2131).
-   *
-   * If you want to accept private broadcast communication while a netif is down,
-   * define LWIP_IP_ACCEPT_UDP_PORT(dst_port), e.g.:
-   *
-   * #define LWIP_IP_ACCEPT_UDP_PORT(dst_port) ((dst_port) == PP_NTOHS(12345))
-   */
-  if (netif == NULL) {
-    /* remote port is DHCP server? */
-    if (IPH_PROTO(iphdr) == IP_PROTO_UDP) {
-      struct udp_hdr *udphdr = (struct udp_hdr *)((u8_t *)iphdr + iphdr_hlen);
-      LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_TRACE, ("ip_input: UDP packet to DHCP client port %"U16_F"\n",
-        ntohs(udphdr->dest)));
-      if (IP_ACCEPT_LINK_LAYER_ADDRESSED_PORT(udphdr->dest)) {
-        LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_TRACE, ("ip_input: DHCP packet accepted.\n"));
-        netif = inp;
-        check_ip_src = 0;
-      }
-    }
-  }
-#endif /* IP_ACCEPT_LINK_LAYER_ADDRESSING */
+//#if IP_ACCEPT_LINK_LAYER_ADDRESSING
+//  /* Pass DHCP messages regardless of destination address. DHCP traffic is addressed
+//   * using link layer addressing (such as Ethernet MAC) so we must not filter on IP.
+//   * According to RFC 1542 section 3.1.1, referred by RFC 2131).
+//   *
+//   * If you want to accept private broadcast communication while a netif is down,
+//   * define LWIP_IP_ACCEPT_UDP_PORT(dst_port), e.g.:
+//   *
+//   * #define LWIP_IP_ACCEPT_UDP_PORT(dst_port) ((dst_port) == PP_NTOHS(12345))
+//   */
+//  if (netif == NULL) {
+//    /* remote port is DHCP server? */
+//    if (IPH_PROTO(iphdr) == IP_PROTO_UDP) {
+//      struct udp_hdr *udphdr = (struct udp_hdr *)((u8_t *)iphdr + iphdr_hlen);
+//      LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_TRACE, ("ip_input: UDP packet to DHCP client port %"U16_F"\n",
+//        ntohs(udphdr->dest)));
+//      if (IP_ACCEPT_LINK_LAYER_ADDRESSED_PORT(udphdr->dest)) {
+//        LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_TRACE, ("ip_input: DHCP packet accepted.\n"));
+//        netif = inp;
+//        check_ip_src = 0;
+//      }
+//    }
+//  }
+//#endif /* IP_ACCEPT_LINK_LAYER_ADDRESSING */
 
   /* broadcast or multicast packet source address? Compliant with RFC 1122: 3.2.1.3 */
 #if IP_ACCEPT_LINK_LAYER_ADDRESSING
@@ -490,13 +490,13 @@ ip_input(struct pbuf *p, struct netif *inp)
   if (netif == NULL) {
     /* packet not for us, route or discard */
     LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_TRACE, ("ip_input: packet not for us.\n"));
-#if IP_FORWARD
-    /* non-broadcast packet? */
-    if (!ip_addr_isbroadcast(&current_iphdr_dest, inp)) {
-      /* try to forward IP packet on (other) interfaces */
-      ip_forward(p, iphdr, inp);
-    } else
-#endif /* IP_FORWARD */
+//#if IP_FORWARD
+//    /* non-broadcast packet? */
+//    if (!ip_addr_isbroadcast(&current_iphdr_dest, inp)) {
+//      /* try to forward IP packet on (other) interfaces */
+//      ip_forward(p, iphdr, inp);
+//    } else
+//#endif /* IP_FORWARD */
     {
       snmp_inc_ipinaddrerrors();
       snmp_inc_ipindiscards();
@@ -504,12 +504,12 @@ ip_input(struct pbuf *p, struct netif *inp)
     pbuf_free(p);
     return ERR_OK;
   }
-  /* packet consists of multiple fragments? */
+  /* packet consists of multiple fragments? 包由多个片段组成？ */
   if ((IPH_OFFSET(iphdr) & PP_HTONS(IP_OFFMASK | IP_MF)) != 0) {
-#if IP_REASSEMBLY /* packet fragment reassembly code present? */
+#if IP_REASSEMBLY /* packet fragment reassembly code present? 数据包片段重组代码存在吗？ */
     LWIP_DEBUGF(IP_DEBUG, ("IP packet is a fragment (id=0x%04"X16_F" tot_len=%"U16_F" len=%"U16_F" MF=%"U16_F" offset=%"U16_F"), calling ip_reass()\n",
       ntohs(IPH_ID(iphdr)), p->tot_len, ntohs(IPH_LEN(iphdr)), !!(IPH_OFFSET(iphdr) & PP_HTONS(IP_MF)), (ntohs(IPH_OFFSET(iphdr)) & IP_OFFMASK)*8));
-    /* reassemble the packet*/
+    /* reassemble the packet 重新组装包装 */
     p = ip_reass(p);
     /* packet not fully reassembled yet? */
     if (p == NULL) {
@@ -555,7 +555,7 @@ ip_input(struct pbuf *p, struct netif *inp)
   current_header = iphdr;
 
 #if LWIP_RAW
-  /* raw input did not eat the packet? */
+  /* raw input did not eat the packet? 原始输入接口不接收这个包？ */
   if (raw_input(p, inp) == 0)
 #endif /* LWIP_RAW */
   {

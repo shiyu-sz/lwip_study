@@ -65,6 +65,8 @@ extern "C" {
  * interface is enabled and processes traffic.
  * It is set by the startup code (for static IP configuration) or
  * by dhcp/autoip when an address has been assigned.
+ 	网络接口是否为“打开”状态。这是一个软件标志，用于控制此网络接口是否已启用并处理流量。
+	由启动代码（用于静态IP配置）设置，或由dhcp / autoip设置地址后设置。
  */
 #define NETIF_FLAG_UP           0x01U
 /** If set, the netif has broadcast capability.

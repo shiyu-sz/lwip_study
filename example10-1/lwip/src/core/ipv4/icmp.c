@@ -218,7 +218,8 @@ icmp_input(struct pbuf *p, struct netif *inp)
       LWIP_ASSERT("Can't move over header in packet", 0);
     } else {
       err_t ret;
-      /* send an ICMP packet, src addr is the dest addr of the curren packet */
+      /* send an ICMP packet, src addr is the dest addr of the curren packet
+      	发送ICMP数据包，src addr是curren数据包的dest addr */
       ret = ip_output_if(p, ip_current_dest_addr(), IP_HDRINCL,
                    ICMP_TTL, 0, IP_PROTO_ICMP, inp);
       if (ret != ERR_OK) {
