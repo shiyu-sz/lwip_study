@@ -186,7 +186,7 @@ udp_input(struct pbuf *p, struct netif *inp)
 
   LWIP_DEBUGF(UDP_DEBUG, ("udp_input: received datagram of length %"U16_F"\n", p->tot_len));
 
-  /* convert src and dest ports to host byte order */
+  /* convert src and dest ports to host byte order 取源端口和目的端口 */
   src = ntohs(udphdr->src);
   dest = ntohs(udphdr->dest);
 
@@ -272,7 +272,7 @@ udp_input(struct pbuf *p, struct netif *inp)
         /* the first fully matching PCB 第一个完全匹配的PCB */
         if (prev != NULL) {
           /* move the pcb to the front of udp_pcbs so that is
-             found faster next time */
+             found faster next time 将pcb移动到udp_pcbs的前面，以便下次更快地找到 */
           prev->next = pcb->next;
           pcb->next = udp_pcbs;
           udp_pcbs = pcb;
@@ -341,7 +341,7 @@ udp_input(struct pbuf *p, struct netif *inp)
       }
 #endif /* CHECKSUM_CHECK_UDP */
     }
-    if(pbuf_header(p, -UDP_HLEN)) {
+    if(pbuf_header(p, -UDP_HLEN)) {     //向后移8个字节，指向报文中的数据区
       /* Can we cope with this failing? Just assert for now */
       LWIP_ASSERT("pbuf_header failed\n", 0);
       UDP_STATS_INC(udp.drop);
@@ -349,7 +349,7 @@ udp_input(struct pbuf *p, struct netif *inp)
       pbuf_free(p);
       goto end;
     }
-    if (pcb != NULL) {
+    if (pcb != NULL) {  //如果有匹配的控制块
       snmp_inc_udpindatagrams();
 //#if SO_REUSE && SO_REUSE_RXTOALL
 //      if ((broadcast || ip_addr_ismulticast(&current_iphdr_dest)) &&
@@ -400,7 +400,7 @@ udp_input(struct pbuf *p, struct netif *inp)
 //      }
 //#endif /* SO_REUSE && SO_REUSE_RXTOALL */
       /* callback */
-      if (pcb->recv != NULL) {
+      if (pcb->recv != NULL) {  //调用控制块中的回调函数
         /* now the recv function is responsible for freeing p */
         pcb->recv(pcb->recv_arg, pcb, p, ip_current_src_addr(), src);
       } else {
@@ -408,7 +408,7 @@ udp_input(struct pbuf *p, struct netif *inp)
         pbuf_free(p);
         goto end;
       }
-    } else {
+    } else {    //没有匹配的控制块，又不是广播或多播，发送ICMP
       LWIP_DEBUGF(UDP_DEBUG | LWIP_DBG_TRACE, ("udp_input: not for us.\n"));
 
 #if LWIP_ICMP
@@ -567,16 +567,16 @@ udp_sendto_if_chksum(struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *dst_ip,
   err_t err;
   struct pbuf *q; /* q will be sent down the stack */
 
-#if IP_SOF_BROADCAST
-  /* broadcast filter? */
-  if (!ip_get_option(pcb, SOF_BROADCAST) && ip_addr_isbroadcast(dst_ip, netif)) {
-    LWIP_DEBUGF(UDP_DEBUG | LWIP_DBG_LEVEL_SERIOUS,
-      ("udp_sendto_if: SOF_BROADCAST not enabled on pcb %p\n", (void *)pcb));
-    return ERR_VAL;
-  }
-#endif /* IP_SOF_BROADCAST */
+//#if IP_SOF_BROADCAST
+//  /* broadcast filter? */
+//  if (!ip_get_option(pcb, SOF_BROADCAST) && ip_addr_isbroadcast(dst_ip, netif)) {
+//    LWIP_DEBUGF(UDP_DEBUG | LWIP_DBG_LEVEL_SERIOUS,
+//      ("udp_sendto_if: SOF_BROADCAST not enabled on pcb %p\n", (void *)pcb));
+//    return ERR_VAL;
+//  }
+//#endif /* IP_SOF_BROADCAST */
 
-  /* if the PCB is not yet bound to a port, bind it here */
+  /* if the PCB is not yet bound to a port, bind it here 如果PCB尚未绑定到端口，请在此处绑定 */
   if (pcb->local_port == 0) {
     LWIP_DEBUGF(UDP_DEBUG | LWIP_DBG_TRACE, ("udp_send: not yet bound to a port, binding now\n"));
     err = udp_bind(pcb, &pcb->local_ip, pcb->local_port);
@@ -596,25 +596,26 @@ udp_sendto_if_chksum(struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *dst_ip,
       return ERR_MEM;
     }
     if (p->tot_len != 0) {
-      /* chain header q in front of given pbuf p (only if p contains data) */
+      /* chain header q in front of given pbuf p (only if p contains data)
+        将p链接到q的后面 */
       pbuf_chain(q, p);
     }
     /* first pbuf q points to header pbuf */
     LWIP_DEBUGF(UDP_DEBUG,
                 ("udp_send: added header pbuf %p before given pbuf %p\n", (void *)q, (void *)p));
   } else {
-    /* adding space for header within p succeeded */
-    /* first pbuf q equals given pbuf */
+    /* adding space for header within p succeeded 在p中成功为标头添加空间 */
+    /* first pbuf q equals given pbuf 第一个pbuf q等于给定的pbuf */
     q = p;
     LWIP_DEBUGF(UDP_DEBUG, ("udp_send: added header in given pbuf %p\n", (void *)p));
   }
   LWIP_ASSERT("check that first pbuf can hold struct udp_hdr",
               (q->len >= sizeof(struct udp_hdr)));
-  /* q now represents the packet to be sent */
+  /* q now represents the packet to be sent 填充udp首部 */
   udphdr = (struct udp_hdr *)q->payload;
   udphdr->src = htons(pcb->local_port);
   udphdr->dest = htons(dst_port);
-  /* in UDP, 0 checksum means 'no checksum' */
+  /* in UDP, 0 checksum means 'no checksum' 没有校验 */
   udphdr->chksum = 0x0000; 
 
   /* Multicast Loop? */
@@ -625,15 +626,16 @@ udp_sendto_if_chksum(struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *dst_ip,
 #endif /* LWIP_IGMP */
 
 
-  /* PCB local address is IP_ANY_ADDR? */
+  /* PCB local address is IP_ANY_ADDR? PCB的本地地址是IP_ANY_ADDR？ */
   if (ip_addr_isany(&pcb->local_ip)) {
-    /* use outgoing network interface IP address as source address */
+    /* use outgoing network interface IP address as source address 使用netif的IP地址作为源地址 */
     src_ip = &(netif->ip_addr);
   } else {
     /* check if UDP PCB local IP address is correct
-     * this could be an old address if netif->ip_addr has changed */
+     * this could be an old address if netif->ip_addr has changed
+        检查UDP PCB本地IP地址是否正确，如果netif-> ip_addr已更改，这可能是旧地址 */
     if (!ip_addr_cmp(&(pcb->local_ip), &(netif->ip_addr))) {
-      /* local_ip doesn't match, drop the packet */
+      /* local_ip doesn't match, drop the packet local_ip不匹配，请丢弃数据包 */
       if (q != p) {
         /* free the header pbuf */
         pbuf_free(q);
@@ -642,81 +644,83 @@ udp_sendto_if_chksum(struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *dst_ip,
       }
       return ERR_VAL;
     }
-    /* use UDP PCB local IP address as source address */
+    /* use UDP PCB local IP address as source address 使用UDP PCB本地IP地址作为源地址 */
     src_ip = &(pcb->local_ip);
   }
 
   LWIP_DEBUGF(UDP_DEBUG, ("udp_send: sending datagram of length %"U16_F"\n", q->tot_len));
 
-#if LWIP_UDPLITE
-  /* UDP Lite protocol? */
-  if (pcb->flags & UDP_FLAGS_UDPLITE) {
-    u16_t chklen, chklen_hdr;
-    LWIP_DEBUGF(UDP_DEBUG, ("udp_send: UDP LITE packet length %"U16_F"\n", q->tot_len));
-    /* set UDP message length in UDP header */
-    chklen_hdr = chklen = pcb->chksum_len_tx;
-    if ((chklen < sizeof(struct udp_hdr)) || (chklen > q->tot_len)) {
-      if (chklen != 0) {
-        LWIP_DEBUGF(UDP_DEBUG, ("udp_send: UDP LITE pcb->chksum_len is illegal: %"U16_F"\n", chklen));
-      }
-      /* For UDP-Lite, checksum length of 0 means checksum
-         over the complete packet. (See RFC 3828 chap. 3.1)
-         At least the UDP-Lite header must be covered by the
-         checksum, therefore, if chksum_len has an illegal
-         value, we generate the checksum over the complete
-         packet to be safe. */
-      chklen_hdr = 0;
-      chklen = q->tot_len;
-    }
-    udphdr->len = htons(chklen_hdr);
-    /* calculate checksum */
-#if CHECKSUM_GEN_UDP
-    udphdr->chksum = inet_chksum_pseudo_partial(q, src_ip, dst_ip,
-      IP_PROTO_UDPLITE, q->tot_len,
-#if !LWIP_CHECKSUM_ON_COPY
-      chklen);
-#else /* !LWIP_CHECKSUM_ON_COPY */
-      (have_chksum ? UDP_HLEN : chklen));
-    if (have_chksum) {
-      u32_t acc;
-      acc = udphdr->chksum + (u16_t)~(chksum);
-      udphdr->chksum = FOLD_U32T(acc);
-    }
-#endif /* !LWIP_CHECKSUM_ON_COPY */
+//#if LWIP_UDPLITE
+//  /* UDP Lite protocol? */
+//  if (pcb->flags & UDP_FLAGS_UDPLITE) {
+//    u16_t chklen, chklen_hdr;
+//    LWIP_DEBUGF(UDP_DEBUG, ("udp_send: UDP LITE packet length %"U16_F"\n", q->tot_len));
+//    /* set UDP message length in UDP header */
+//    chklen_hdr = chklen = pcb->chksum_len_tx;
+//    if ((chklen < sizeof(struct udp_hdr)) || (chklen > q->tot_len)) {
+//      if (chklen != 0) {
+//        LWIP_DEBUGF(UDP_DEBUG, ("udp_send: UDP LITE pcb->chksum_len is illegal: %"U16_F"\n", chklen));
+//      }
+//      /* For UDP-Lite, checksum length of 0 means checksum
+//         over the complete packet. (See RFC 3828 chap. 3.1)
+//         At least the UDP-Lite header must be covered by the
+//         checksum, therefore, if chksum_len has an illegal
+//         value, we generate the checksum over the complete
+//         packet to be safe. */
+//      chklen_hdr = 0;
+//      chklen = q->tot_len;
+//    }
+//    udphdr->len = htons(chklen_hdr);
+//    /* calculate checksum */
+//#if CHECKSUM_GEN_UDP
+//    udphdr->chksum = inet_chksum_pseudo_partial(q, src_ip, dst_ip,
+//      IP_PROTO_UDPLITE, q->tot_len,
+//#if !LWIP_CHECKSUM_ON_COPY
+//      chklen);
+//#else /* !LWIP_CHECKSUM_ON_COPY */
+//      (have_chksum ? UDP_HLEN : chklen));
+//    if (have_chksum) {
+//      u32_t acc;
+//      acc = udphdr->chksum + (u16_t)~(chksum);
+//      udphdr->chksum = FOLD_U32T(acc);
+//    }
+//#endif /* !LWIP_CHECKSUM_ON_COPY */
 
-    /* chksum zero must become 0xffff, as zero means 'no checksum' */
-    if (udphdr->chksum == 0x0000) {
-      udphdr->chksum = 0xffff;
-    }
-#endif /* CHECKSUM_GEN_UDP */
-    /* output to IP */
-    LWIP_DEBUGF(UDP_DEBUG, ("udp_send: ip_output_if (,,,,IP_PROTO_UDPLITE,)\n"));
-    NETIF_SET_HWADDRHINT(netif, &pcb->addr_hint);
-    err = ip_output_if(q, src_ip, dst_ip, pcb->ttl, pcb->tos, IP_PROTO_UDPLITE, netif);
-    NETIF_SET_HWADDRHINT(netif, NULL);
-  } else
-#endif /* LWIP_UDPLITE */
+//    /* chksum zero must become 0xffff, as zero means 'no checksum' */
+//    if (udphdr->chksum == 0x0000) {
+//      udphdr->chksum = 0xffff;
+//    }
+//#endif /* CHECKSUM_GEN_UDP */
+//    /* output to IP */
+//    LWIP_DEBUGF(UDP_DEBUG, ("udp_send: ip_output_if (,,,,IP_PROTO_UDPLITE,)\n"));
+//    NETIF_SET_HWADDRHINT(netif, &pcb->addr_hint);
+//    err = ip_output_if(q, src_ip, dst_ip, pcb->ttl, pcb->tos, IP_PROTO_UDPLITE, netif);
+//    NETIF_SET_HWADDRHINT(netif, NULL);
+//  } else
+//#endif /* LWIP_UDPLITE */
   {      /* UDP */
     LWIP_DEBUGF(UDP_DEBUG, ("udp_send: UDP packet length %"U16_F"\n", q->tot_len));
     udphdr->len = htons(q->tot_len);
     /* calculate checksum */
 #if CHECKSUM_GEN_UDP
-    if ((pcb->flags & UDP_FLAGS_NOCHKSUM) == 0) {
+    if ((pcb->flags & UDP_FLAGS_NOCHKSUM) == 0) {   //如果开启了udp的校验
       u16_t udpchksum;
-#if LWIP_CHECKSUM_ON_COPY
-      if (have_chksum) {
-        u32_t acc;
-        udpchksum = inet_chksum_pseudo_partial(q, src_ip, dst_ip, IP_PROTO_UDP,
-          q->tot_len, UDP_HLEN);
-        acc = udpchksum + (u16_t)~(chksum);
-        udpchksum = FOLD_U32T(acc);
-      } else
-#endif /* LWIP_CHECKSUM_ON_COPY */
+//#if LWIP_CHECKSUM_ON_COPY
+//      if (have_chksum) {
+//        u32_t acc;
+//        udpchksum = inet_chksum_pseudo_partial(q, src_ip, dst_ip, IP_PROTO_UDP,
+//          q->tot_len, UDP_HLEN);
+//        acc = udpchksum + (u16_t)~(chksum);
+//        udpchksum = FOLD_U32T(acc);
+//      } else
+//#endif /* LWIP_CHECKSUM_ON_COPY */
       {
+        //计算校验
         udpchksum = inet_chksum_pseudo(q, src_ip, dst_ip, IP_PROTO_UDP, q->tot_len);
       }
 
-      /* chksum zero must become 0xffff, as zero means 'no checksum' */
+      /* chksum zero must become 0xffff, as zero means 'no checksum'
+            校验结果如果是0，就改为0xffff，因为0且示没有校验*/
       if (udpchksum == 0x0000) {
         udpchksum = 0xffff;
       }
@@ -727,6 +731,7 @@ udp_sendto_if_chksum(struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *dst_ip,
     LWIP_DEBUGF(UDP_DEBUG, ("udp_send: ip_output_if (,,,,IP_PROTO_UDP,)\n"));
     /* output to IP */
     NETIF_SET_HWADDRHINT(netif, &pcb->addr_hint);
+    //调用ip层发送函数
     err = ip_output_if(q, src_ip, dst_ip, pcb->ttl, pcb->tos, IP_PROTO_UDP, netif);
     NETIF_SET_HWADDRHINT(netif, NULL);
   }
@@ -747,7 +752,7 @@ udp_sendto_if_chksum(struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *dst_ip,
 
 /**
  * Bind an UDP PCB.
- *
+ *  将pcb与本地地址和端口绑定
  * @param pcb UDP PCB to be bound with a local address ipaddr and port.
  * @param ipaddr local IP address to bind with. Use IP_ADDR_ANY to
  * bind to all local interfaces.
@@ -775,9 +780,9 @@ udp_bind(struct udp_pcb *pcb, ip_addr_t *ipaddr, u16_t port)
   LWIP_DEBUGF(UDP_DEBUG | LWIP_DBG_TRACE, (", port = %"U16_F")\n", port));
 
   rebind = 0;
-  /* Check for double bind and rebind of the same pcb */
+  /* Check for double bind and rebind of the same pcb 遍历udp链表  */
   for (ipcb = udp_pcbs; ipcb != NULL; ipcb = ipcb->next) {
-    /* is this UDP PCB already on active list? */
+    /* is this UDP PCB already on active list? 如果当前的pcb在链表中 */
     if (pcb == ipcb) {
       /* pcb may occur at most once in active list */
       LWIP_ASSERT("rebind == 0", rebind == 0);
@@ -788,19 +793,20 @@ udp_bind(struct udp_pcb *pcb, ip_addr_t *ipaddr, u16_t port)
     /* By default, we don't allow to bind to a port that any other udp
        PCB is alread bound to, unless *all* PCBs with that port have tha
        REUSEADDR flag set. */
-#if SO_REUSE
-    else if (!ip_get_option(pcb, SOF_REUSEADDR) &&
-             !ip_get_option(ipcb, SOF_REUSEADDR)) {
-#else /* SO_REUSE */
+//#if SO_REUSE
+//    else if (!ip_get_option(pcb, SOF_REUSEADDR) &&
+//             !ip_get_option(ipcb, SOF_REUSEADDR)) {
+//#else /* SO_REUSE */
     /* port matches that of PCB in list and REUSEADDR not set -> reject */
     else {
-#endif /* SO_REUSE */
+//#endif /* SO_REUSE */
+        //在for中判断要绑定的端口是否已经被绑定了
       if ((ipcb->local_port == port) &&
-          /* IP address matches, or one is IP_ADDR_ANY? */
+          /* IP address matches, or one is IP_ADDR_ANY? IP地址匹配，或者是IP_ADDR_ANY？ */
           (ip_addr_isany(&(ipcb->local_ip)) ||
            ip_addr_isany(ipaddr) ||
            ip_addr_cmp(&(ipcb->local_ip), ipaddr))) {
-        /* other PCB already binds to this local IP and port */
+        /* other PCB already binds to this local IP and port 其他PCB已绑定到该本地IP和端口 */
         LWIP_DEBUGF(UDP_DEBUG,
                     ("udp_bind: local port %"U16_F" already bound by another pcb\n", port));
         return ERR_USE;
@@ -810,20 +816,20 @@ udp_bind(struct udp_pcb *pcb, ip_addr_t *ipaddr, u16_t port)
 
   ip_addr_set(&pcb->local_ip, ipaddr);
 
-  /* no port specified? */
+  /* no port specified? 没有指定端口？ */
   if (port == 0) {
-    port = udp_new_port();
+    port = udp_new_port();  //查找一个可用的端口
     if (port == 0) {
-      /* no more ports available in local range */
+      /* no more ports available in local range 没有可用的端口 */
       LWIP_DEBUGF(UDP_DEBUG, ("udp_bind: out of free UDP ports\n"));
       return ERR_USE;
     }
   }
-  pcb->local_port = port;
+  pcb->local_port = port;   //更新控制块中的端口
   snmp_insert_udpidx_tree(pcb);
   /* pcb not active yet? */
   if (rebind == 0) {
-    /* place the PCB on the active list if not already there */
+    /* place the PCB on the active list if not already there 将pcb放入udp_pcbs中 */
     pcb->next = udp_pcbs;
     udp_pcbs = pcb;
   }
@@ -838,7 +844,7 @@ udp_bind(struct udp_pcb *pcb, ip_addr_t *ipaddr, u16_t port)
  * Connect an UDP PCB.
  *
  * This will associate the UDP PCB with the remote address.
- *
+ *  将pcb与远程地址关联
  * @param pcb UDP PCB to be connected with remote address ipaddr and port.
  * @param ipaddr remote IP address to connect with.
  * @param port remote UDP port to connect with.
@@ -856,15 +862,15 @@ udp_connect(struct udp_pcb *pcb, ip_addr_t *ipaddr, u16_t port)
 {
   struct udp_pcb *ipcb;
 
-  if (pcb->local_port == 0) {
+  if (pcb->local_port == 0) {   //如果本地端口未绑定，先绑定
     err_t err = udp_bind(pcb, &pcb->local_ip, pcb->local_port);
     if (err != ERR_OK) {
       return err;
     }
   }
 
-  ip_addr_set(&pcb->remote_ip, ipaddr);
-  pcb->remote_port = port;
+  ip_addr_set(&pcb->remote_ip, ipaddr); //设置pcb中的远程地址
+  pcb->remote_port = port;              //设置pcb中的远程端口
   pcb->flags |= UDP_FLAGS_CONNECTED;
 /** TODO: this functionality belongs in upper layers */
 #ifdef LWIP_UDP_TODO
@@ -891,14 +897,14 @@ udp_connect(struct udp_pcb *pcb, ip_addr_t *ipaddr, u16_t port)
                ip4_addr3_16(&pcb->local_ip), ip4_addr4_16(&pcb->local_ip),
                pcb->local_port));
 
-  /* Insert UDP PCB into the list of active UDP PCBs. */
+  /* Insert UDP PCB into the list of active UDP PCBs. 如果控制块已经在链表中，返回成功 */
   for (ipcb = udp_pcbs; ipcb != NULL; ipcb = ipcb->next) {
     if (pcb == ipcb) {
       /* already on the list, just return */
       return ERR_OK;
     }
   }
-  /* PCB not yet on the list, add PCB now */
+  /* PCB not yet on the list, add PCB now 否则将pcb链接到链表中 */
   pcb->next = udp_pcbs;
   udp_pcbs = pcb;
   return ERR_OK;
@@ -906,7 +912,7 @@ udp_connect(struct udp_pcb *pcb, ip_addr_t *ipaddr, u16_t port)
 
 /**
  * Disconnect a UDP PCB
- *
+ *  将pcb与远程地址联消关联
  * @param pcb the udp pcb to disconnect.
  */
 void
@@ -921,7 +927,7 @@ udp_disconnect(struct udp_pcb *pcb)
 
 /**
  * Set a receive callback for a UDP PCB
- *
+ *  设置接收回调函数
  * This callback will be called when receiving a datagram for the pcb.
  *
  * @param pcb the pcb for wich to set the recv callback
@@ -938,7 +944,7 @@ udp_recv(struct udp_pcb *pcb, udp_recv_fn recv, void *recv_arg)
 
 /**
  * Remove an UDP PCB.
- *
+ *  删除一个pcb
  * @param pcb UDP PCB to be removed. The PCB is removed from the list of
  * UDP PCB's and the data structure is freed from memory.
  *
@@ -969,7 +975,7 @@ udp_remove(struct udp_pcb *pcb)
 
 /**
  * Create a UDP PCB.
- *
+ *  创建一个pcb
  * @return The UDP PCB which was created. NULL if the PCB data structure
  * could not be allocated.
  *

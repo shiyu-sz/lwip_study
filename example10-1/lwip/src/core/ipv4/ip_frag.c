@@ -99,6 +99,7 @@ PACK_STRUCT_END
 #  include "arch/epstruct.h"
 #endif
 
+//宏的意思是判断两个IP包中的源地址，目的地址，和ID是否相同
 #define IP_ADDRESSES_AND_ID_MATCH(iphdrA, iphdrB)  \
   (ip_addr_cmp(&(iphdrA)->src, &(iphdrB)->src) && \
    ip_addr_cmp(&(iphdrA)->dest, &(iphdrB)->dest) && \
@@ -113,10 +114,11 @@ static void ip_reass_dequeue_datagram(struct ip_reassdata *ipr, struct ip_reassd
 static int ip_reass_free_complete_datagram(struct ip_reassdata *ipr, struct ip_reassdata *prev);
 
 /**
- * Reassembly timer base function
+ * Reassembly timer base function   重组计时器基础功能
  * for both NO_SYS == 0 and 1 (!).
  *
  * Should be called every 1000 msec (defined by IP_TMR_INTERVAL).
+    应该每1000毫秒调用一次（由IP_TMR_INTERVAL定义）。
  */
 void
 ip_reass_tmr(void)
@@ -124,15 +126,15 @@ ip_reass_tmr(void)
   struct ip_reassdata *r, *prev = NULL;
 
   r = reassdatagrams;
-  while (r != NULL) {
+  while (r != NULL) {   //遍历链表
     /* Decrement the timer. Once it reaches 0,
      * clean up the incomplete fragment assembly */
-    if (r->timer > 0) {
+    if (r->timer > 0) { //如果当前分片的剩余生存时间大于0，则减1
       r->timer--;
       LWIP_DEBUGF(IP_REASS_DEBUG, ("ip_reass_tmr: timer dec %"U16_F"\n",(u16_t)r->timer));
       prev = r;
       r = r->next;
-    } else {
+    } else {        //如果剩余生存时间等于0，在链表中删除这个分片
       /* reassembly timed out */
       struct ip_reassdata *tmp;
       LWIP_DEBUGF(IP_REASS_DEBUG, ("ip_reass_tmr: timer timed out\n"));
@@ -149,7 +151,8 @@ ip_reass_tmr(void)
  * Free a datagram (struct ip_reassdata) and all its pbufs.
  * Updates the total count of enqueued pbufs (ip_reass_pbufcount),
  * SNMP counters and sends an ICMP time exceeded packet.
- *
+ *  释放一个数据报（结构ip_reassdata）及其所有pbuf。
+    更新排队的pbuf的总数（ip_reass_pbufcount），SNMP计数器并发送ICMP时间超出的数据包。
  * @param ipr datagram to free
  * @param prev the previous datagram in the linked list
  * @return the number of pbufs freed
@@ -177,32 +180,35 @@ ip_reass_free_complete_datagram(struct ip_reassdata *ipr, struct ip_reassdata *p
     ipr->p = iprh->next_pbuf;
     /* Then, copy the original header into it. */
     SMEMCPY(p->payload, &ipr->iphdr, IP_HLEN);
-    icmp_time_exceeded(p, ICMP_TE_FRAG);
-    clen = pbuf_clen(p);
+    icmp_time_exceeded(p, ICMP_TE_FRAG);    //向主机发送ICMP包，通知主机数据包未送达
+    clen = pbuf_clen(p);    //计算一下这个ip_reassdata上有多少个pbuf
     LWIP_ASSERT("pbufs_freed + clen <= 0xffff", pbufs_freed + clen <= 0xffff);
     pbufs_freed += clen;
-    pbuf_free(p);
+    pbuf_free(p);   //释放pbuff
   }
 #endif /* LWIP_ICMP */
 
   /* First, free all received pbufs.  The individual pbufs need to be released 
-     separately as they have not yet been chained */
+     separately as they have not yet been chained
+     首先，释放所有收到的pbuf。由于尚未将各个pbuf绑定在一起，因此需要分别释放它们 */
   p = ipr->p;
   while (p != NULL) {
     struct pbuf *pcur;
     iprh = (struct ip_reass_helper *)p->payload;
     pcur = p;
-    /* get the next pointer before freeing */
+    /* get the next pointer before freeing 释放前获取下一个指针 */
     p = iprh->next_pbuf;
     clen = pbuf_clen(pcur);
     LWIP_ASSERT("pbufs_freed + clen <= 0xffff", pbufs_freed + clen <= 0xffff);
     pbufs_freed += clen;
     pbuf_free(pcur);
   }
-  /* Then, unchain the struct ip_reassdata from the list and free it. */
+  /* Then, unchain the struct ip_reassdata from the list and free it.
+    然后，从列表中取消链接struct ip_reassdata并将其释放。
+    前面是释放ip_reassdata中的pbuf，这里是释放ip_reassdata*/
   ip_reass_dequeue_datagram(ipr, prev);
   LWIP_ASSERT("ip_reass_pbufcount >= clen", ip_reass_pbufcount >= pbufs_freed);
-  ip_reass_pbufcount -= pbufs_freed;
+  ip_reass_pbufcount -= pbufs_freed;    //更新分片的个数
 
   return pbufs_freed;
 }
@@ -234,9 +240,9 @@ ip_reass_remove_oldest_datagram(struct ip_hdr *fraghdr, int pbufs_needed)
     prev = NULL;
     other_datagrams = 0;
     r = reassdatagrams;
-    while (r != NULL) {
+    while (r != NULL) { //这个while是根据生存时间从reassdatagrams里找出最老的一个分片
       if (!IP_ADDRESSES_AND_ID_MATCH(&r->iphdr, fraghdr)) {
-        /* Not the same datagram as fraghdr */
+        /* Not the same datagram as fraghdr 与fraghdr不同的数据报 */
         other_datagrams++;
         if (oldest == NULL) {
           oldest = r;
@@ -251,6 +257,7 @@ ip_reass_remove_oldest_datagram(struct ip_hdr *fraghdr, int pbufs_needed)
       r = r->next;
     }
     if (oldest != NULL) {
+        //传入最老的一个分片和下一个分片，因为删除最老的分片后还要把链表链起来
       pbufs_freed_current = ip_reass_free_complete_datagram(oldest, prev);
       pbufs_freed += pbufs_freed_current;
     }
@@ -323,6 +330,8 @@ ip_reass_dequeue_datagram(struct ip_reassdata *ipr, struct ip_reassdata *prev)
  * will grow over time as  new pbufs are rx.
  * Also checks that the datagram passes basic continuity checks (if the last
  * fragment was received at least once).
+    将新的pbuf链接到组成数据报的pbuf列表中。随着新的pbuf被接收，pbuf列表将随着时间增长。
+    还检查数据报是否通过基本的连续性检查（如果最后一个片段至少被接收一次）。
  * @param root_p points to the 'root' pbuf for the current datagram being assembled.
  * @param new_p points to the pbuf for the current fragment
  * @return 0 if invalid, >0 otherwise
@@ -468,7 +477,7 @@ freepbuf:
 
 /**
  * Reassembles incoming IP fragments into an IP datagram.
- *
+ *  将传入的IP片段重组为IP数据报。
  * @param p points to a pbuf chain of the fragment
  * @return NULL if reassembly is incomplete, ? otherwise
  */
@@ -486,6 +495,7 @@ ip_reass(struct pbuf *p)
   IPFRAG_STATS_INC(ip_frag.recv);
   snmp_inc_ipreasmreqds();
 
+    //取出IP首部
   fraghdr = (struct ip_hdr*)p->payload;
 
   if ((IPH_HL(fraghdr) * 4) != IP_HLEN) {
@@ -494,13 +504,14 @@ ip_reass(struct pbuf *p)
     goto nullreturn;
   }
 
-  offset = (ntohs(IPH_OFFSET(fraghdr)) & IP_OFFMASK) * 8;
-  len = ntohs(IPH_LEN(fraghdr)) - IPH_HL(fraghdr) * 4;
+  offset = (ntohs(IPH_OFFSET(fraghdr)) & IP_OFFMASK) * 8;   //得到分片的偏移量
+  len = ntohs(IPH_LEN(fraghdr)) - IPH_HL(fraghdr) * 4;      //得到分片数据的长度
 
-  /* Check if we are allowed to enqueue more datagrams. */
+  /* Check if we are allowed to enqueue more datagrams. 检查是否允许我们加入更多数据报。 */
   clen = pbuf_clen(p);
   if ((ip_reass_pbufcount + clen) > IP_REASS_MAX_PBUFS) {
 #if IP_REASS_FREE_OLDEST
+        //释放最老的一个数据分片，再判断有没有超过最大大小
     if (!ip_reass_remove_oldest_datagram(fraghdr, clen) ||
         ((ip_reass_pbufcount + clen) > IP_REASS_MAX_PBUFS))
 #endif /* IP_REASS_FREE_OLDEST */
@@ -516,7 +527,8 @@ ip_reass(struct pbuf *p)
   }
 
   /* Look for the datagram the fragment belongs to in the current datagram queue,
-   * remembering the previous in the queue for later dequeueing. */
+   * remembering the previous in the queue for later dequeueing. 
+    在当前数据报队列中查找该片段所属的数据报，记住队列中的前一个，以供以后出队。 */
   for (ipr = reassdatagrams; ipr != NULL; ipr = ipr->next) {
     /* Check if the incoming fragment matches the one currently present
        in the reassembly buffer. If so, we proceed with copying the
@@ -527,13 +539,13 @@ ip_reass(struct pbuf *p)
       IPFRAG_STATS_INC(ip_frag.cachehit);
       break;
     }
-    ipr_prev = ipr;
+    ipr_prev = ipr; //记录找到的ip_reassdata的前一个
   }
 
-  if (ipr == NULL) {
-  /* Enqueue a new datagram into the datagram queue */
+  if (ipr == NULL) {    //如果为空，表示未找到匹配的结构，说明这是一个新的数据包，为该分片新建一个ip_reassdata
+  /* Enqueue a new datagram into the datagram queue  */
     ipr = ip_reass_enqueue_new_datagram(fraghdr, clen);
-    /* Bail if unable to enqueue */
+    /* Bail if unable to enqueue 如果新建失败 */
     if(ipr == NULL) {
       goto nullreturn;
     }
@@ -543,7 +555,9 @@ ip_reass(struct pbuf *p)
       /* ipr->iphdr is not the header from the first fragment, but fraghdr is
        * -> copy fraghdr into ipr->iphdr since we want to have the header
        * of the first fragment (for ICMP time exceeded and later, for copying
-       * all options, if supported)*/
+       * all options, if supported)
+            ipr-> iphdr不是第一个片段的标头，但是fraghdr是->将fraghdr复制到ipr-> iphdr，
+            因为我们要拥有第一个片段的标头（超过了ICMP时间，以后需要复制全部选项（如果支持）*/
       SMEMCPY(&ipr->iphdr, fraghdr, IP_HLEN);
     }
   }
@@ -562,7 +576,7 @@ ip_reass(struct pbuf *p)
      ("ip_reass: last fragment seen, total len %"S16_F"\n",
       ipr->datagram_len));
   }
-  /* find the right place to insert this pbuf */
+  /* find the right place to insert this pbuf 插入接收到的pbuf */
   /* @todo: trim pbufs if fragments are overlapping */
   if (ip_reass_chain_frag_into_datagram_and_validate(ipr, p)) {
     /* the totally last fragment (flag more fragments = 0) was received at least
@@ -605,7 +619,7 @@ ip_reass(struct pbuf *p)
   LWIP_DEBUGF(IP_REASS_DEBUG,("ip_reass_pbufcount: %d out\n", ip_reass_pbufcount));
   return NULL;
 
-nullreturn:
+nullreturn: //数据包错误
   LWIP_DEBUGF(IP_REASS_DEBUG,("ip_reass: nullreturn\n"));
   IPFRAG_STATS_INC(ip_frag.drop);
   pbuf_free(p);
@@ -652,11 +666,12 @@ ipfrag_free_pbuf_custom(struct pbuf *p)
 
 /**
  * Fragment an IP datagram if too large for the netif.
- *
+ *  如果对于netif太大，则分段IP数据报。
  * Chop the datagram in MTU sized chunks and send them in order
  * by using a fixed size static memory buffer (PBUF_REF) or
  * point PBUF_REFs into p (depending on IP_FRAG_USES_STATIC_BUF).
- *
+ *  将数据报切成MTU大小的块并将其按顺序发送
+    通过使用固定大小的静态内存缓冲区（PBUF_REF）或将PBUF_REF指向p（取决于IP_FRAG_USES_STATIC_BUF）。
  * @param p ip packet to send
  * @param netif the netif on which to send
  * @param dest destination ip address to which to send

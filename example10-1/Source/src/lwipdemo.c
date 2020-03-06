@@ -76,6 +76,7 @@ void udp_demo_callback1(void *arg, struct udp_pcb *upcb, struct pbuf *p, struct 
 static char * st_buffer= "We get a data\n";
 void udp_demo_init(void)
 {
+
    struct udp_pcb *upcb;
  //  struct ip_addr ipaddr;
  //  IP4_ADDR(&ipaddr, 192,168,1,78);                              

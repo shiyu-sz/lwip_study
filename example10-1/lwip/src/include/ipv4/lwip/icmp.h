@@ -41,17 +41,17 @@
 extern "C" {
 #endif
 
-#define ICMP_ER   0    /* echo reply */
-#define ICMP_DUR  3    /* destination unreachable */
-#define ICMP_SQ   4    /* source quench */
-#define ICMP_RD   5    /* redirect */
-#define ICMP_ECHO 8    /* echo */
-#define ICMP_TE  11    /* time exceeded */
-#define ICMP_PP  12    /* parameter problem */
-#define ICMP_TS  13    /* timestamp */
-#define ICMP_TSR 14    /* timestamp reply */
-#define ICMP_IRQ 15    /* information request */
-#define ICMP_IR  16    /* information reply */
+#define ICMP_ER   0    /* echo reply                回送应答 */
+#define ICMP_DUR  3    /* destination unreachable   目的站不可达 */
+#define ICMP_SQ   4    /* source quench             源站抑制 */
+#define ICMP_RD   5    /* redirect                  重定向 */
+#define ICMP_ECHO 8    /* echo                      回送请求 */
+#define ICMP_TE  11    /* time exceeded             数据报超时 */
+#define ICMP_PP  12    /* parameter problem         数据报参数错误 */
+#define ICMP_TS  13    /* timestamp                 时间戳请求 */
+#define ICMP_TSR 14    /* timestamp reply           时间戳应答s */
+#define ICMP_IRQ 15    /* information request       信息请求 */
+#define ICMP_IR  16    /* information reply         信息应答 */
 
 enum icmp_dur_type {
   ICMP_DUR_NET   = 0,  /* net unreachable */

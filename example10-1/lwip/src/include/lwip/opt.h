@@ -530,6 +530,8 @@
  * IP_FRAG==1: Fragment outgoing IP packets if their size exceeds MTU. Note
  * that this option does not affect incoming packet sizes, which can be
  * controlled via IP_REASSEMBLY.
+    如果传出IP数据包的大小超过MTU，则对它们进行分段。
+    注意此选项不影响传入的数据包大小，可以通过IP_REASSEMBLY控制。
  */
 #ifndef IP_FRAG
 #define IP_FRAG                         1

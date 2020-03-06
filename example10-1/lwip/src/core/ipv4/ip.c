@@ -408,7 +408,7 @@ ip_input(struct pbuf *p, struct netif *inp)
           ip4_addr_get_u32(&netif->ip_addr) & ip4_addr_get_u32(&netif->netmask),
           ip4_addr_get_u32(&iphdr->dest) & ~ip4_addr_get_u32(&netif->netmask)));
 
-      /* interface is up and configured? */
+      /* interface is up and configured? 接口已使用且ip地址是有效的 */
       if ((netif_is_up(netif)) && (!ip_addr_isany(&(netif->ip_addr)))) {
         /* unicast to this interface address? 单播到该接口地址？ */
         if (ip_addr_cmp(&current_iphdr_dest, &(netif->ip_addr)) ||
@@ -478,7 +478,7 @@ ip_input(struct pbuf *p, struct netif *inp)
       /* packet source is not valid */
       LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_TRACE | LWIP_DBG_LEVEL_WARNING, ("ip_input: packet source is not valid.\n"));
       /* free (drop) packet pbufs */
-      pbuf_free(p);
+      pbuf_free(p);     //如果接收到的是广播或多播，丢弃
       IP_STATS_INC(ip.drop);
       snmp_inc_ipinaddrerrors();
       snmp_inc_ipindiscards();
@@ -486,17 +486,17 @@ ip_input(struct pbuf *p, struct netif *inp)
     }
   }
 
-  /* packet not for us? */
+  /* packet not for us? 包不是给我们的，调用ip_forward转发数据报文 */
   if (netif == NULL) {
     /* packet not for us, route or discard */
     LWIP_DEBUGF(IP_DEBUG | LWIP_DBG_TRACE, ("ip_input: packet not for us.\n"));
-//#if IP_FORWARD
-//    /* non-broadcast packet? */
-//    if (!ip_addr_isbroadcast(&current_iphdr_dest, inp)) {
-//      /* try to forward IP packet on (other) interfaces */
-//      ip_forward(p, iphdr, inp);
-//    } else
-//#endif /* IP_FORWARD */
+#if IP_FORWARD
+    /* non-broadcast packet? */
+    if (!ip_addr_isbroadcast(&current_iphdr_dest, inp)) {
+      /* try to forward IP packet on (other) interfaces */
+      ip_forward(p, iphdr, inp);
+    } else
+#endif /* IP_FORWARD */
     {
       snmp_inc_ipinaddrerrors();
       snmp_inc_ipindiscards();
@@ -555,7 +555,7 @@ ip_input(struct pbuf *p, struct netif *inp)
   current_header = iphdr;
 
 #if LWIP_RAW
-  /* raw input did not eat the packet? 原始输入接口不接收这个包？ */
+  /* raw input did not eat the packet? 原始输入接口有没有处理这个包？ */
   if (raw_input(p, inp) == 0)
 #endif /* LWIP_RAW */
   {
@@ -788,7 +788,7 @@ err_t ip_output_if_opt(struct pbuf *p, ip_addr_t *src, ip_addr_t *dest,
 #endif /* LWIP_IGMP */
 #endif /* ENABLE_LOOPBACK */
 #if IP_FRAG
-  /* don't fragment if interface has mtu set to 0 [loopif] */
+  /* don't fragment if interface has mtu set to 0 [loopif] 如果接口的mtu设置为0，则不要分段[loopif] */
   if (netif->mtu && (p->tot_len > netif->mtu)) {
     return ip_frag(p, netif, dest);
   }

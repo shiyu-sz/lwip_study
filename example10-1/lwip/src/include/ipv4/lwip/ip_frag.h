@@ -52,12 +52,12 @@ extern "C" {
  * This is exported because memp needs to know the size.
  */
 struct ip_reassdata {
-  struct ip_reassdata *next;
-  struct pbuf *p;
-  struct ip_hdr iphdr;
-  u16_t datagram_len;
-  u8_t flags;
-  u8_t timer;
+  struct ip_reassdata *next;    //用于构建单向链表的指针，表头为reassdatagrams
+  struct pbuf *p;               //该数据报的数据链表
+  struct ip_hdr iphdr;          //数据报的ip首部
+  u16_t datagram_len;           //已经收到的数据报长度
+  u8_t flags;                   //是否收到最后一个分片
+  u8_t timer;                   //设置超时间隔
 };
 
 void ip_reass_init(void);

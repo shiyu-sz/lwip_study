@@ -54,7 +54,9 @@
 
 /** Small optimization: set to 0 if incoming PBUF_POOL pbuf always can be
  * used to modify and send a response packet (and to 1 if this is not the case,
- * e.g. when link header is stripped of when receiving) */
+ * e.g. when link header is stripped of when receiving)
+    小型优化：如果始终可以将传入的PBUF_POOL pbuf用于修改和发送响应数据包，
+    则设置为0（如果不是，则设置为1，例如，在接收时删除了链接头）*/
 #ifndef LWIP_ICMP_ECHO_CHECK_INPUT_PBUF_LEN
 #define LWIP_ICMP_ECHO_CHECK_INPUT_PBUF_LEN 1
 #endif /* LWIP_ICMP_ECHO_CHECK_INPUT_PBUF_LEN */
@@ -66,7 +68,7 @@ static void icmp_send_response(struct pbuf *p, u8_t type, u8_t code);
 
 /**
  * Processes ICMP input packets, called from ip_input().
- *
+ *  处理从ip_input（）调用的ICMP输入数据包。
  * Currently only processes icmp echo requests and sends
  * out the echo response.
  *
@@ -87,7 +89,7 @@ icmp_input(struct pbuf *p, struct netif *inp)
   ICMP_STATS_INC(icmp.recv);
   snmp_inc_icmpinmsgs();
 
-
+    //取IP数据首部
   iphdr = (struct ip_hdr *)p->payload;
   hlen = IPH_HL(iphdr) * 4;
   if (pbuf_header(p, -hlen) || (p->tot_len < sizeof(u16_t)*2)) {
@@ -102,20 +104,21 @@ icmp_input(struct pbuf *p, struct netif *inp)
   switch (type) {
   case ICMP_ER:
     /* This is OK, echo reply might have been parsed by a raw PCB
-       (as obviously, an echo request has been sent, too). */
+       (as obviously, an echo request has been sent, too). 
+       没关系，回声回复可能已由原始PCB解析（显然，回声请求也已发送）。 */
     break; 
-  case ICMP_ECHO:
+  case ICMP_ECHO:   //LWIP只处理了回送请求
 #if !LWIP_MULTICAST_PING || !LWIP_BROADCAST_PING
     {
       int accepted = 1;
 #if !LWIP_MULTICAST_PING
-      /* multicast destination address? */
+      /* multicast destination address? 是否是多播地址 */
       if (ip_addr_ismulticast(&current_iphdr_dest)) {
         accepted = 0;
       }
 #endif /* LWIP_MULTICAST_PING */
 #if !LWIP_BROADCAST_PING
-      /* broadcast destination address? */
+      /* broadcast destination address? 是否是广播地址 */
       if (ip_addr_isbroadcast(&current_iphdr_dest, inp)) {
         accepted = 0;
       }
@@ -253,7 +256,8 @@ memerr:
  * Send an icmp 'destination unreachable' packet, called from ip_input() if
  * the transport layer protocol is unknown and from udp_input() if the local
  * port is not bound.
- *
+ *  发送一个icmp“目的地不可达”数据包，如果传输层协议未知，则从ip_input（）调用，
+    如果未绑定本地端口，则从udp_input（）调用。
  * @param p the input packet for which the 'unreachable' should be sent,
  *          p->payload pointing to the IP header
  * @param t type of the 'unreachable' packet
@@ -267,7 +271,7 @@ icmp_dest_unreach(struct pbuf *p, enum icmp_dur_type t)
 #if IP_FORWARD || IP_REASSEMBLY
 /**
  * Send a 'time exceeded' packet, called from ip_forward() if TTL is 0.
- *
+ *  发送一个“超时”数据包，如果TTL为0，则从ip_forward（）调用。
  * @param p the input packet for which the 'time exceeded' should be sent,
  *          p->payload pointing to the IP header
  * @param t type of the 'time exceeded' packet
@@ -282,7 +286,7 @@ icmp_time_exceeded(struct pbuf *p, enum icmp_te_type t)
 
 /**
  * Send an icmp packet in response to an incoming packet.
- *
+ *  发送icmp数据包以响应传入数据包。
  * @param p the input packet for which the 'unreachable' should be sent,
  *          p->payload pointing to the IP header
  * @param type Type of the ICMP header

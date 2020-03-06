@@ -381,6 +381,8 @@ void wrq_recv_callback(void *_args, struct udp_pcb *upcb, struct pbuf *pkt_buf, 
   /* If the last write returned less than the maximum TFTP data pkt length,
    * then we've received the whole file and so we can quit (this is how TFTP
    * signals the EndTransferof a transfer!)
+   如果最后一次写入返回的数据少于最大TFTP数据pkt长度，那么我们已经收到了整个文件，
+   因此可以退出（这是TFTP 发出EndTransferof信号的方式！）
    */
   if (pkt_buf->len < TFTP_DATA_PKT_LEN_MAX)
   {
@@ -433,7 +435,7 @@ int tftp_process_write(struct udp_pcb *upcb, struct ip_addr *to, int to_port, ch
   /* set callback for receives on this UDP PCB (Protocol Control Block) */
   udp_recv(upcb, wrq_recv_callback, args);
 
-  /* initiate the write transaction by sending the first ack */
+  /* initiate the write transaction by sending the first ack 回复第一个写请求包 */
   tftp_send_ack_packet(upcb, to, to_port, args->block);
 
   return 0;
@@ -474,7 +476,8 @@ void process_tftp_request(struct pbuf *pkt_buf, struct ip_addr *addr, u16_t port
     printf("connect upcb error\n");
     return;
   }
-  
+
+  //
   tftp_extract_filename(FileName, pkt_buf->payload);
 
   switch (op)

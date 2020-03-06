@@ -640,7 +640,7 @@ pbuf_free(struct pbuf *p)
   count = 0;
   /* de-allocate all consecutive pbufs from the head of the chain that
    * obtain a zero reference count after decrementing*/
-   //循环释放，直到有pbuf为空
+   //循环释放，直到所有pbuf为空
   while (p != NULL) {
     u16_t ref;
     SYS_ARCH_DECL_PROTECT(old_level);
@@ -722,7 +722,7 @@ pbuf_clen(struct pbuf *p)
 
 /**
  * Increment the reference count of the pbuf.
- *
+ *  增加pbuf的引用计数。
  * @param p pbuf to increase reference counter of
  *
  */
@@ -741,7 +741,7 @@ pbuf_ref(struct pbuf *p)
 /**
  * Concatenate two pbufs (each may be a pbuf chain) and take over
  * the caller's reference of the tail pbuf.
- * 
+ *  连接两个pbuf（每个可能是一个pbuf链）并接管呼叫者对尾部pbuf的引用。
  * @note The caller MAY NOT reference the tail pbuf afterwards.
  * Use pbuf_chain() for that purpose.
  * 
@@ -793,7 +793,7 @@ void
 pbuf_chain(struct pbuf *h, struct pbuf *t)
 {
   pbuf_cat(h, t);
-  /* t is now referenced by h */
+  /* t is now referenced by h t现在被h引用 */
   pbuf_ref(t);
   LWIP_DEBUGF(PBUF_DEBUG | LWIP_DBG_TRACE, ("pbuf_chain: %p references %p\n", (void *)h, (void *)t));
 }

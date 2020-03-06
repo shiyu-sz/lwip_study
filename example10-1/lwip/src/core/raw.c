@@ -83,16 +83,16 @@ raw_input(struct pbuf *p, struct netif *inp)
   LWIP_UNUSED_ARG(inp);
 
   iphdr = (struct ip_hdr *)p->payload;
-  proto = IPH_PROTO(iphdr);
+  proto = IPH_PROTO(iphdr);     //获得协仪字段
 
   prev = NULL;
-  pcb = raw_pcbs;
+  pcb = raw_pcbs;   //遍历raw链表
   /* loop through all raw pcbs until the packet is eaten by one */
   /* this allows multiple pcbs to match against the packet by design */
   while ((eaten == 0) && (pcb != NULL)) {
     if ((pcb->protocol == proto) &&
         (ip_addr_isany(&pcb->local_ip) ||
-         ip_addr_cmp(&(pcb->local_ip), &current_iphdr_dest))) {
+         ip_addr_cmp(&(pcb->local_ip), &current_iphdr_dest))) { //如果收到的数协仪与某个raw_pcb匹配
 //#if IP_SOF_BROADCAST_RECV
 //      /* broadcast filter? */
 //      if (ip_get_option(pcb, SOF_BROADCAST) || !ip_addr_isbroadcast(&current_iphdr_dest, inp))
@@ -100,14 +100,15 @@ raw_input(struct pbuf *p, struct netif *inp)
       {
         /* receive callback function available? */
         if (pcb->recv != NULL) {
-          /* the receive callback function did not eat the packet? 接收回调函数没有吃包？ */
+          /* the receive callback function did not eat the packet?  */
           if (pcb->recv(pcb->recv_arg, pcb, p, ip_current_src_addr()) != 0) {
-            /* receive function ate the packet */
+            /* receive function ate the packet 如果p已经被recv处理并删除了，将p置空，且不用再查找了 */
             p = NULL;
             eaten = 1;
             if (prev != NULL) {
             /* move the pcb to the front of raw_pcbs so that is
-               found faster next time */
+               found faster next time 
+               将pcb移到raw_pcbs的前面，以便下次找到更快，因为下一个包大概率还是这个协仪的包 */
               prev->next = pcb->next;
               pcb->next = raw_pcbs;
               raw_pcbs = pcb;
@@ -121,7 +122,7 @@ raw_input(struct pbuf *p, struct netif *inp)
     prev = pcb;
     pcb = pcb->next;
   }
-  return eaten;
+  return eaten;     //返回1表示raw处理了这个包，这个包不用再传到上一层
 }
 
 /**
