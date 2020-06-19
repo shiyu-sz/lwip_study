@@ -48,6 +48,7 @@ static bool led_on = FALSE;
 /*send page*/
 httpserver_send_html(struct netconn *conn, bool led_status)
 {
+  Printf("run httpserver_send_html() \n");
     netconn_write(conn, http_html_hdr, sizeof(http_html_hdr)-1, NETCONN_NOCOPY);
       
      /* Send our HTML page */
@@ -68,7 +69,9 @@ static void httpserver_serve(struct netconn *conn)
   
   /* Read the data from the port, blocking if nothing yet there. 
    We assume the request (the part we care about) is in one netbuf */
+   Printf("run netconn_recv()\n");
   err = netconn_recv(conn, &inbuf);
+  Printf("netconn_recv = %d \n", err);
   
   if (err == ERR_OK) 
 	{
@@ -91,13 +94,18 @@ static void httpserver_serve(struct netconn *conn)
     }
 	else if(buflen>=8&&buf[0]=='P'&&buf[1]=='O'&&buf[2]=='S'&&buf[3]=='T')
 	{
-		if(buf[6]=='o'&&buf[7]=='n'){		//请求打开LED
+    Printf("post!!! \n");
+		if(buf[6]=='o'&&buf[7]=='n')
+    {		//请求打开LED
+        Printf("post on!!! \n");
 		    led_on = TRUE;
-            LED2_ON();
-		}else if(buf[6]=='o'&&buf[7]=='f'&&buf[8]=='f'){	//请求关闭LED
+        LED2_ON();
+		}else if(buf[6]=='o'&&buf[7]=='f'&&buf[8]=='f')
+    {	//请求关闭LED
+        Printf("post off!!! \n");
 		    led_on = FALSE;
-            LED2_OFF();
-	    }
+        LED2_OFF();
+	  }
 
 		httpserver_send_html(conn, led_on);
 	}
@@ -127,6 +135,7 @@ httpserver_thread(void *arg)
   LED2_ON();
   
   /* Bind to port 80 (HTTP) with default IP address */
+  Printf("wait netconn_bind() \n");
   netconn_bind(conn, NULL, 80);
   
   /* Put the connection into LISTEN state */
@@ -134,6 +143,7 @@ httpserver_thread(void *arg)
   
   do {
     err = netconn_accept(conn, &newconn);
+    Printf("netconn_accept = %d \n", err);
     if (err == ERR_OK) {
       httpserver_serve(newconn);
       netconn_delete(newconn);

@@ -154,7 +154,8 @@ tcp_tmr(void)
  * Closes the TX side of a connection held by the PCB.
  * For tcp_close(), a RST is sent if the application didn't receive all data
  * (tcp_recved() not called for all data passed to recv callback).
- *
+ *  关闭PCB保持的连接的TX端。对于tcp_close（），如果应用程序未接收到所有数据，则发送RST（对于传递给recv回调的所有数据，均不调用tcp_recved（））。
+ 
  * Listening pcbs are freed and may not be referenced any more.
  * Connection pcbs are freed if not yet connected and may not be referenced
  * any more. If a connection is established (at least SYN received or in
@@ -196,7 +197,7 @@ tcp_close_shutdown(struct tcp_pcb *pcb, u8_t rst_on_unacked_data)
     }
   }
 
-  switch (pcb->state) {
+  switch (pcb->state) { //根据传入控制块的状态做不同的处理
   case CLOSED:
     /* Closing a pcb in the CLOSED state might seem erroneous,
      * however, it is in this state once allocated and as yet unused
@@ -204,7 +205,7 @@ tcp_close_shutdown(struct tcp_pcb *pcb, u8_t rst_on_unacked_data)
      * Calling tcp_close() with a pcb that has already been closed, (i.e. twice)
      * or for a pcb that has been used and then entered the CLOSED state 
      * is erroneous, but this should never happen as the pcb has in those cases
-     * been freed, and so any remaining handles are bogus. */
+     * been freed, and so any remaining handles are bogus. 如果是CLOSED状态，从链表删除，释放空间 */
     err = ERR_OK;
     if (pcb->local_port != 0) {
       TCP_RMV(&tcp_bound_pcbs, pcb);
@@ -212,24 +213,24 @@ tcp_close_shutdown(struct tcp_pcb *pcb, u8_t rst_on_unacked_data)
     memp_free(MEMP_TCP_PCB, pcb);
     pcb = NULL;
     break;
-  case LISTEN:
+  case LISTEN:  //LISTEN状态，从链表删除，释放空间
     err = ERR_OK;
     tcp_pcb_remove(&tcp_listen_pcbs.pcbs, pcb);
     memp_free(MEMP_TCP_PCB_LISTEN, pcb);
     pcb = NULL;
     break;
-  case SYN_SENT:
+  case SYN_SENT:    //SYN_SENT状态，从链表删除，释放空间
     err = ERR_OK;
     TCP_PCB_REMOVE_ACTIVE(pcb);
     memp_free(MEMP_TCP_PCB, pcb);
     pcb = NULL;
     snmp_inc_tcpattemptfails();
     break;
-  case SYN_RCVD:
+  case SYN_RCVD:    //发送FIN握手报文
     err = tcp_send_fin(pcb);
     if (err == ERR_OK) {
       snmp_inc_tcpattemptfails();
-      pcb->state = FIN_WAIT_1;
+      pcb->state = FIN_WAIT_1;  //转到FIN_WAIT_1状态
     }
     break;
   case ESTABLISHED:
@@ -671,7 +672,7 @@ again:
 /**
  * Connects to another host. The function given as the "connected"
  * argument will be called when the connection has been established.
- *
+ *  连接到另一台主机。 建立连接后，将调用作为“ connected” 参数给出的函数。
  * @param pcb the tcp_pcb used to establish the connection
  * @param ipaddr the remote ip address to connect to
  * @param port the remote tcp port to connect to
@@ -691,55 +692,36 @@ tcp_connect(struct tcp_pcb *pcb, ip_addr_t *ipaddr, u16_t port,
   LWIP_ERROR("tcp_connect: can only connect from state CLOSED", pcb->state == CLOSED, return ERR_ISCONN);
 
   LWIP_DEBUGF(TCP_DEBUG, ("tcp_connect to port %"U16_F"\n", port));
-  if (ipaddr != NULL) {
+  if (ipaddr != NULL) {         //将ip地址给控制块的远程ip
     pcb->remote_ip = *ipaddr;
   } else {
     return ERR_VAL;
   }
-  pcb->remote_port = port;
+  pcb->remote_port = port;      //将端口给控制块的远程端口
 
   /* check if we have a route to the remote host */
-  if (ip_addr_isany(&(pcb->local_ip))) {
+  if (ip_addr_isany(&(pcb->local_ip))) {    //如果地址为空或全零
     /* no local IP address set, yet. */
-    struct netif *netif = ip_route(&(pcb->remote_ip));
+    struct netif *netif = ip_route(&(pcb->remote_ip));  //找一个和目的地址网段一样的网络接口
     if (netif == NULL) {
       /* Don't even try to send a SYN packet if we have no route
          since that will fail. */
       return ERR_RTE;
     }
-    /* Use the netif's IP address as local address. */
+    /* Use the netif's IP address as local address. 如果找到路由，设置本地IP地址为网卡地址 */
     ip_addr_copy(pcb->local_ip, netif->ip_addr);
   }
 
   old_local_port = pcb->local_port;
-  if (pcb->local_port == 0) {
+  if (pcb->local_port == 0) {       //如果本地端口未绑定，则绑定一个短暂端口
     pcb->local_port = tcp_new_port();
     if (pcb->local_port == 0) {
       return ERR_BUF;
     }
   }
-#if SO_REUSE
-  if (ip_get_option(pcb, SOF_REUSEADDR)) {
-    /* Since SOF_REUSEADDR allows reusing a local address, we have to make sure
-       now that the 5-tuple is unique. */
-    struct tcp_pcb *cpcb;
-    int i;
-    /* Don't check listen- and bound-PCBs, check active- and TIME-WAIT PCBs. */
-    for (i = 2; i < NUM_TCP_PCB_LISTS; i++) {
-      for(cpcb = *tcp_pcb_lists[i]; cpcb != NULL; cpcb = cpcb->next) {
-        if ((cpcb->local_port == pcb->local_port) &&
-            (cpcb->remote_port == port) &&
-            ip_addr_cmp(&cpcb->local_ip, &pcb->local_ip) &&
-            ip_addr_cmp(&cpcb->remote_ip, ipaddr)) {
-          /* linux returns EISCONN here, but ERR_USE should be OK for us */
-          return ERR_USE;
-        }
-      }
-    }
-  }
-#endif /* SO_REUSE */
-  iss = tcp_next_iss();
-  pcb->rcv_nxt = 0;
+
+  iss = tcp_next_iss();     //初始化序号
+  pcb->rcv_nxt = 0;         //
   pcb->snd_nxt = iss;
   pcb->lastack = iss - 1;
   pcb->snd_lbb = iss - 1;
@@ -756,23 +738,23 @@ tcp_connect(struct tcp_pcb *pcb, ip_addr_t *ipaddr, u16_t port,
   pcb->cwnd = 1;
   pcb->ssthresh = pcb->mss * 10;
 #if LWIP_CALLBACK_API
-  pcb->connected = connected;
+  pcb->connected = connected;   //注册connected回调函数
 #else /* LWIP_CALLBACK_API */  
   LWIP_UNUSED_ARG(connected);
 #endif /* LWIP_CALLBACK_API */
 
-  /* Send a SYN together with the MSS option. */
+  /* Send a SYN together with the MSS option. 发送SYN消息 */
   ret = tcp_enqueue_flags(pcb, TCP_SYN);
   if (ret == ERR_OK) {
     /* SYN segment was enqueued, changed the pcbs state now */
     pcb->state = SYN_SENT;
     if (old_local_port != 0) {
-      TCP_RMV(&tcp_bound_pcbs, pcb);
+      TCP_RMV(&tcp_bound_pcbs, pcb);    //将控制块从已绑定链表中删除
     }
-    TCP_REG_ACTIVE(pcb);
+    TCP_REG_ACTIVE(pcb);            //将控制块加到稳定状态链表中
     snmp_inc_tcpactiveopens();
 
-    tcp_output(pcb);
+    tcp_output(pcb);        //将控制块上连接的报文发送出去
   }
   return ret;
 }

@@ -21,8 +21,8 @@ void lwip_init_task(void)
 	struct ip_addr ipaddr, netmask, gw;
 
     lwip_init();
-	IP4_ADDR(&gw, 192,168,5,1);
-	IP4_ADDR(&ipaddr, 192,168,5,37);
+	IP4_ADDR(&gw, 192,168,2,1);
+	IP4_ADDR(&ipaddr, 192,168,2,37);
 	IP4_ADDR(&netmask, 255,255,255,0);
 
     netif_add(&enc28j60_netif, &ipaddr, &netmask, &gw, NULL, ethernetif_init,ethernet_input);
@@ -59,12 +59,19 @@ static void echo_client_conn_err(void *arg, err_t err)
 }
 static err_t echo_client_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 {
+
+    printf("rcv_nxt = %#x \n", pcb->rcv_nxt);
+    printf("rcv_wnd = %d \n", pcb->rcv_wnd);
+    printf("rcv_ann_wnd = %d \n", pcb->rcv_ann_wnd);
+    printf("rcv_ann_right_edge = %#x \n", pcb->rcv_ann_right_edge);
+
   /* We perform here any necessary processing on the pbuf */
   if (p != NULL) 
   {        
 	/* We call this function to tell the LwIp that we have processed the data */
 	/* This lets the stack advertise a larger window, so more data can be received*/
 	tcp_recved(pcb, p->tot_len);
+    printf("recv = %s \n", p->payload);
     tcp_write(pcb, p->payload, p->len, 1);
     pbuf_free(p);
 
@@ -82,6 +89,10 @@ static err_t echo_client_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, er
 static err_t echo_client_sent(void *arg, struct tcp_pcb *pcb, u16_t len)
 {
 	printf("echo client send data OK! sent len = [%d]\n", len);
+    printf("rcv_nxt = %#x \n", pcb->rcv_nxt);
+    printf("rcv_wnd = %d \n", pcb->rcv_wnd);
+    printf("rcv_ann_wnd = %d \n", pcb->rcv_ann_wnd);
+    printf("rcv_ann_right_edge = %#x \n", pcb->rcv_ann_right_edge);
     return ERR_OK;
 }
 static err_t echo_client_connected(void *arg, struct tcp_pcb *pcb, err_t err)
@@ -103,8 +114,8 @@ static void echo_client_init(void)
   struct ip_addr server_ip;
   /* Create a new TCP control block  */
   pcb = tcp_new();
-  IP4_ADDR(&server_ip, 192,168,2,11);
-  tcp_connect(pcb, &server_ip, 21, echo_client_connected); 
+  IP4_ADDR(&server_ip, 192,168,2,10);
+  tcp_connect(pcb, &server_ip, 21000, echo_client_connected); 
   tcp_err(pcb, echo_client_conn_err); 										
 }
 
@@ -153,6 +164,7 @@ static err_t http_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err
 static err_t http_accept(void *arg, struct tcp_pcb *pcb, err_t err)
 {     
 
+    printf("run http_accept() \n");
   tcp_recv(pcb, http_recv);
   return ERR_OK;
 }
@@ -175,11 +187,11 @@ static void http_server_init(void)
 
 
   /* Set the connection to the LISTEN state */
-  pcb = tcp_listen(pcb);				
+  pcb = tcp_listen(pcb);    //返回的pcb中state变成了LISTEN			
+    printf("run tcp_listen() \n");
 
   /* Specify the function to be called when a connection is established */	
-  tcp_accept(pcb, http_accept);   
-										
+  tcp_accept(pcb, http_accept);
 }
 
 void lwip_demo(void *pdata)

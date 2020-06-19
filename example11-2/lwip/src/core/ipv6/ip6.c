@@ -76,6 +76,7 @@ ip_route(struct ip_addr *dest)
 {
   struct netif *netif;
 
+    //判断是否有网卡的网段和目的地址的网段一样
   for(netif = netif_list; netif != NULL; netif = netif->next) {
     if (ip_addr_netcmp(dest, &(netif->ip_addr), &(netif->netmask))) {
       return netif;

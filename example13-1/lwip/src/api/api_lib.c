@@ -479,6 +479,7 @@ netconn_recv(struct netconn *conn, struct netbuf **new_buf)
 
     err = netconn_recv_data(conn, (void **)&p);
     if (err != ERR_OK) {
+      Printf("netconn_recv_data error! \n");
       memp_free(MEMP_NETBUF, buf);
       return err;
     }

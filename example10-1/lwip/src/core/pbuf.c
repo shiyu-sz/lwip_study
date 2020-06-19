@@ -648,7 +648,7 @@ pbuf_free(struct pbuf *p)
      * we must protect it. We put the new ref into a local variable to prevent
      * further protection. */
     SYS_ARCH_PROTECT(old_level);
-    /* all pbufs in a chain are referenced at least once */
+    /* all pbufs in a chain are referenced at least once 链中的所有pbuf至少被引用一次 */
     LWIP_ASSERT("pbuf_free: p->ref > 0", p->ref > 0);
     /* decrease reference count (number of pointers to pbuf) */
     //将pbuf引用次数减1
@@ -775,7 +775,7 @@ pbuf_cat(struct pbuf *h, struct pbuf *t)
 
 /**
  * Chain two pbufs (or pbuf chains) together.
- * 
+ *  将两个pbuf（或pbuf链）链接在一起。
  * The caller MUST call pbuf_free(t) once it has stopped
  * using it. Use pbuf_cat() instead if you no longer use t.
  * 

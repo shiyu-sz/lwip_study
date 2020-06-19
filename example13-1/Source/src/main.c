@@ -107,7 +107,7 @@ static void App_TaskStart2(void* p_arg)
    Printf("****************sss******************************\r\n");
    while (1)
    {  	  	    
-	  OSTimeDlyHMSM(0, 0, 4, 20);
+	  OSTimeDlyHMSM(0, 0, 1, 0);
 	  if(tmp %2 == 0)
 	  {
 	  	 LED1_ON();

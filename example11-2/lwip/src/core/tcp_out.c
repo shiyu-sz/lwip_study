@@ -293,7 +293,7 @@ tcp_seg_add_chksum(u16_t chksum, u16_t len, u16_t *seg_chksum,
 static err_t
 tcp_write_checks(struct tcp_pcb *pcb, u16_t len)
 {
-  /* connection is in invalid state for data transmission? */
+  /* connection is in invalid state for data transmission? 连接处于无效状态时传输数据？ */
   if ((pcb->state != ESTABLISHED) &&
       (pcb->state != CLOSE_WAIT) &&
       (pcb->state != SYN_SENT) &&
@@ -369,11 +369,11 @@ tcp_write(struct tcp_pcb *pcb, const void *arg, u16_t len, u8_t apiflags)
   u16_t concat_chksummed = 0;
 #endif /* TCP_CHECKSUM_ON_COPY */
   err_t err;
-  /* don't allocate segments bigger than half the maximum window we ever received */
+  /* don't allocate segments bigger than half the maximum window we ever received 不要分配大于我们收到的最大窗口一半的段 */
   u16_t mss_local = LWIP_MIN(pcb->mss, pcb->snd_wnd_max/2);
 
 #if LWIP_NETIF_TX_SINGLE_PBUF
-  /* Always copy to try to create single pbufs for TX */
+  /* Always copy to try to create single pbufs for TX 始终复制以尝试为TX创建单个pbuf */
   apiflags |= TCP_WRITE_FLAG_COPY;
 #endif /* LWIP_NETIF_TX_SINGLE_PBUF */
 
@@ -382,7 +382,7 @@ tcp_write(struct tcp_pcb *pcb, const void *arg, u16_t len, u8_t apiflags)
   LWIP_ERROR("tcp_write: arg == NULL (programmer violates API)", 
              arg != NULL, return ERR_ARG;);
 
-  err = tcp_write_checks(pcb, len);
+  err = tcp_write_checks(pcb, len); //检查TCP的状态是否可以发数据，检查长度是否正确
   if (err != ERR_OK) {
     return err;
   }
@@ -397,11 +397,11 @@ tcp_write(struct tcp_pcb *pcb, const void *arg, u16_t len, u8_t apiflags)
 
 
   /*
-   * TCP segmentation is done in three phases with increasing complexity:
+   * TCP segmentation is done in three phases with increasing complexity: TCP分段分三个阶段进行，并且增加了复杂性：
    *
-   * 1. Copy data directly into an oversized pbuf.
-   * 2. Chain a new pbuf to the end of pcb->unsent.
-   * 3. Create new segments.
+   * 1. Copy data directly into an oversized pbuf. 将数据直接复制到超大的pbuf中。
+   * 2. Chain a new pbuf to the end of pcb->unsent. 将新的pbuf链接到pcb-> unsent的末尾。
+   * 3. Create new segments. 创建新的细分。
    *
    * We may run out of memory at any point. In that case we must
    * return ERR_MEM and not change anything in pcb. Therefore, all
@@ -910,20 +910,25 @@ tcp_output(struct tcp_pcb *pcb)
   /* First, check if we are invoked by the TCP input processing
      code. If so, we do not output anything. Instead, we rely on the
      input processing code to call us when input processing is done
-     with. */
+     with. 
+    首先，检查是否由TCP输入处理代码调用了我们。 如果是这样，我们什么都不输出。
+    相反，当完成输入处理时，我们依靠输入处理代码来调用我们。
+     */
   if (tcp_input_pcb == pcb) {
     return ERR_OK;
   }
 
   wnd = LWIP_MIN(pcb->snd_wnd, pcb->cwnd);
 
-  seg = pcb->unsent;
+  seg = pcb->unsent;    //未发送的段
 
   /* If the TF_ACK_NOW flag is set and no data will be sent (either
    * because the ->unsent queue is empty or because the window does
    * not allow it), construct an empty ACK segment and send it.
-   *
+   *    如果TF_ACK_NOW标志位设置了并且没有数据要被发送(the ->unsent队列为空或发送窗口不允许)
+        构建一个空的ACK段并发送
    * If data is to be sent, we will just piggyback the ACK (see below).
+        如果要发送数据，我们将背负ACK（见下文）。
    */
   if (pcb->flags & TF_ACK_NOW &&
      (seg == NULL ||
@@ -931,7 +936,7 @@ tcp_output(struct tcp_pcb *pcb)
      return tcp_send_empty_ack(pcb);
   }
 
-  /* useg should point to last segment on unacked queue */
+  /* useg should point to last segment on unacked queue useg指向未确认队列的最后一个节点 */
   useg = pcb->unacked;
   if (useg != NULL) {
     for (; useg->next != NULL; useg = useg->next);
@@ -963,7 +968,7 @@ tcp_output(struct tcp_pcb *pcb)
          ntohl(seg->tcphdr->seqno) - pcb->lastack + seg->len <= wnd) {
     LWIP_ASSERT("RST not expected here!", 
                 (TCPH_FLAGS(seg->tcphdr) & TCP_RST) == 0);
-    /* Stop sending if the nagle algorithm would prevent it
+    /* Stop sending if the nagle algorithm would prevent it 如果nagle算法阻止了发送，则停止发送
      * Don't stop:
      * - if tcp_write had a memory error before (prevent delayed ACK timeout) or
      * - if FIN was already enqueued for this PCB (SYN is always alone in a segment -
@@ -983,14 +988,14 @@ tcp_output(struct tcp_pcb *pcb)
     ++i;
 #endif /* TCP_CWND_DEBUG */
 
-    pcb->unsent = seg->next;
+    pcb->unsent = seg->next;    //将pcb->unsent指向pcb->unsent的下一个
 
     if (pcb->state != SYN_SENT) {
       TCPH_SET_FLAG(seg->tcphdr, TCP_ACK);
       pcb->flags &= ~(TF_ACK_DELAY | TF_ACK_NOW);
     }
 
-    tcp_output_segment(seg, pcb);
+    tcp_output_segment(seg, pcb);   //发送报文段
     snd_nxt = ntohl(seg->tcphdr->seqno) + TCP_TCPLEN(seg);
     if (TCP_SEQ_LT(pcb->snd_nxt, snd_nxt)) {
       pcb->snd_nxt = snd_nxt;
@@ -1026,7 +1031,7 @@ tcp_output(struct tcp_pcb *pcb)
     } else {
       tcp_seg_free(seg);
     }
-    seg = pcb->unsent;
+    seg = pcb->unsent;  //发送一下个报文段
   }
 #if TCP_OVERSIZE
   if (pcb->unsent == NULL) {

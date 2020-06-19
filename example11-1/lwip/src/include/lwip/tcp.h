@@ -193,8 +193,8 @@ struct tcp_pcb {
   u32_t tmr;
 
   /* receiver variables */
-  u32_t rcv_nxt;   /* next seqno expected */
-  u16_t rcv_wnd;   /* receiver window available */
+  u32_t rcv_nxt;   /* next seqno expected 预期下一个序列号 */
+  u16_t rcv_wnd;   /* receiver window available 接收器窗口可用 */
   u16_t rcv_ann_wnd; /* receiver window to announce */
   u32_t rcv_ann_right_edge; /* announced right edge of window */
 
@@ -248,15 +248,15 @@ struct tcp_pcb {
   struct pbuf *refused_data; /* Data previously received but not yet taken by upper layer */
 
 #if LWIP_CALLBACK_API
-  /* Function to be called when more send buffer space is available. */
+  /* Function to be called when more send buffer space is available. 有更多发送缓冲区空间可用时调用的函数。 */
   tcp_sent_fn sent;
-  /* Function to be called when (in-sequence) data has arrived. */
+  /* Function to be called when (in-sequence) data has arrived. （按顺序）数据到达时要调用的函数。 */
   tcp_recv_fn recv;
-  /* Function to be called when a connection has been set up. */
+  /* Function to be called when a connection has been set up. 建立连接后要调用的函数。 */
   tcp_connected_fn connected;
-  /* Function which is called periodically. */
+  /* Function which is called periodically. 定期调用的功能。 */
   tcp_poll_fn poll;
-  /* Function to be called whenever a fatal error occurs. */
+  /* Function to be called whenever a fatal error occurs. 发生致命错误时将调用的函数。 */
   tcp_err_fn errf;
 #endif /* LWIP_CALLBACK_API */
 

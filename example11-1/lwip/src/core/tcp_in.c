@@ -105,14 +105,14 @@ tcp_input(struct pbuf *p, struct netif *inp)
   TCP_STATS_INC(tcp.recv);
   snmp_inc_tcpinsegs();
 
-  iphdr = (struct ip_hdr *)p->payload;
-  tcphdr = (struct tcp_hdr *)((u8_t *)p->payload + IPH_HL(iphdr) * 4);
+  iphdr = (struct ip_hdr *)p->payload;  //取出ip报头
+  tcphdr = (struct tcp_hdr *)((u8_t *)p->payload + IPH_HL(iphdr) * 4);  //取出TCP报头
 
 #if TCP_INPUT_DEBUG
   tcp_debug_print(tcphdr);
 #endif
 
-  /* remove header from payload */
+  /* remove header from payload 从数据中删除头 */
   if (pbuf_header(p, -((s16_t)(IPH_HL(iphdr) * 4))) || (p->tot_len < sizeof(struct tcp_hdr))) {
     /* drop short packets */
     LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_input: short packet (%"U16_F" bytes) discarded\n", p->tot_len));
@@ -120,7 +120,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
     goto dropped;
   }
 
-  /* Don't even process incoming broadcasts/multicasts. */
+  /* Don't even process incoming broadcasts/multicasts. 判断是不是广播和多播 */
   if (ip_addr_isbroadcast(&current_iphdr_dest, inp) ||
       ip_addr_ismulticast(&current_iphdr_dest)) {
     TCP_STATS_INC(tcp.proterr);
@@ -143,7 +143,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
 #endif
 
   /* Move the payload pointer in the pbuf so that it points to the
-     TCP data instead of the TCP header. */
+     TCP data instead of the TCP header. 跳过TCP的头，指向数据 */
   hdrlen = TCPH_HDRLEN(tcphdr);
   if(pbuf_header(p, -(hdrlen * 4))){
     /* drop short packets */
@@ -152,7 +152,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
     goto dropped;
   }
 
-  /* Convert fields in TCP header to host byte order. */
+  /* Convert fields in TCP header to host byte order. 将TCP标头中的字段转换为主机字节顺序。 */
   tcphdr->src = ntohs(tcphdr->src);
   tcphdr->dest = ntohs(tcphdr->dest);
   seqno = tcphdr->seqno = ntohl(tcphdr->seqno);
@@ -163,10 +163,11 @@ tcp_input(struct pbuf *p, struct netif *inp)
   tcplen = p->tot_len + ((flags & (TCP_FIN | TCP_SYN)) ? 1 : 0);
 
   /* Demultiplex an incoming segment. First, we check if it is destined
-     for an active connection. */
+     for an active connection. 
+     对输入段进行多路分解。 首先，我们检查它是否用于活动连接 */
   prev = NULL;
 
-  
+  //判断接收到的数据对应的控制块是否在tcp_active_pcbs中
   for(pcb = tcp_active_pcbs; pcb != NULL; pcb = pcb->next) {
     LWIP_ASSERT("tcp_input: active pcb->state != CLOSED", pcb->state != CLOSED);
     LWIP_ASSERT("tcp_input: active pcb->state != TIME-WAIT", pcb->state != TIME_WAIT);
@@ -193,7 +194,8 @@ tcp_input(struct pbuf *p, struct netif *inp)
 
   if (pcb == NULL) {
     /* If it did not go to an active connection, we check the connections
-       in the TIME-WAIT state. */
+       in the TIME-WAIT state. 
+       如果没有建立活动连接，我们将检查连接处于TIME-WAIT状态 */
     for(pcb = tcp_tw_pcbs; pcb != NULL; pcb = pcb->next) {
       LWIP_ASSERT("tcp_input: TIME-WAIT pcb->state == TIME-WAIT", pcb->state == TIME_WAIT);
       if (pcb->remote_port == tcphdr->src &&
@@ -211,41 +213,26 @@ tcp_input(struct pbuf *p, struct netif *inp)
     }
 
     /* Finally, if we still did not get a match, we check all PCBs that
-       are LISTENing for incoming connections. */
+       are LISTENing for incoming connections.
+       最后，如果仍然没有找到匹配项，则检查所有正在侦听输入连接的PCB。*/
     prev = NULL;
     for(lpcb = tcp_listen_pcbs.listen_pcbs; lpcb != NULL; lpcb = lpcb->next) {
       if (lpcb->local_port == tcphdr->dest) {
-#if SO_REUSE
-        if (ip_addr_cmp(&(lpcb->local_ip), &current_iphdr_dest)) {
-          /* found an exact match */
-          break;
-        } else if(ip_addr_isany(&(lpcb->local_ip))) {
-          /* found an ANY-match */
-          lpcb_any = lpcb;
-          lpcb_prev = prev;
-        }
-#else /* SO_REUSE */
+
         if (ip_addr_cmp(&(lpcb->local_ip), &current_iphdr_dest) ||
             ip_addr_isany(&(lpcb->local_ip))) {
           /* found a match */
           break;
         }
-#endif /* SO_REUSE */
+
       }
       prev = (struct tcp_pcb *)lpcb;
     }
-#if SO_REUSE
-    /* first try specific local IP */
-    if (lpcb == NULL) {
-      /* only pass to ANY if no specific local IP has been found */
-      lpcb = lpcb_any;
-      prev = lpcb_prev;
-    }
-#endif /* SO_REUSE */
     if (lpcb != NULL) {
       /* Move this PCB to the front of the list so that subsequent
          lookups will be faster (we exploit locality in TCP segment
-         arrivals). */
+         arrivals). 
+         将此PCB移到列表的最前面，这样以后的查找将更快（我们在TCP段到达中使用局部性）。 */
       if (prev != NULL) {
         ((struct tcp_pcb_listen *)prev)->next = lpcb->next;
               /* our successor is the remainder of the listening list */
@@ -300,7 +287,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
         goto aborted;
       }
     }
-    tcp_input_pcb = pcb;
+    tcp_input_pcb = pcb;    //记录当前报文的控制块
     err = tcp_process(pcb);
     /* A return value of ERR_ABRT means that tcp_abort() was called
        and that the pcb has been freed. If so, we don't do anything. */
@@ -379,7 +366,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
         }
 
         tcp_input_pcb = NULL;
-        /* Try to send something out. */
+        /* Try to send something out. 尝试发送一些东西。 */
         tcp_output(pcb);
 #if TCP_INPUT_DEBUG
 #if TCP_DEBUG

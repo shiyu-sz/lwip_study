@@ -398,10 +398,10 @@ tcp_write(struct tcp_pcb *pcb, const void *arg, u16_t len, u8_t apiflags)
 
   /*
    * TCP segmentation is done in three phases with increasing complexity:
-   *
-   * 1. Copy data directly into an oversized pbuf.
-   * 2. Chain a new pbuf to the end of pcb->unsent.
-   * 3. Create new segments.
+   *    TCP分段分三个阶段进行，并且复杂度不断提高：
+   * 1. Copy data directly into an oversized pbuf.  将数据直接复制到超大的pbuf中。
+   * 2. Chain a new pbuf to the end of pcb->unsent. 将新的pbuf链接到pcb-> unsent的末尾。
+   * 3. Create new segments.    创建新的细分。
    *
    * We may run out of memory at any point. In that case we must
    * return ERR_MEM and not change anything in pcb. Therefore, all
@@ -432,11 +432,11 @@ tcp_write(struct tcp_pcb *pcb, const void *arg, u16_t len, u8_t apiflags)
     space = mss_local - (last_unsent->len + unsent_optlen);
 
     /*
-     * Phase 1: Copy data directly into an oversized pbuf.
+     * Phase 1: Copy data directly into an oversized pbuf. 阶段1：将数据直接复制到超大的pbuf中。
      *
      * The number of bytes copied is recorded in the oversize_used
      * variable. The actual copying is done at the bottom of the
-     * function.
+     * function. 复制的字节数记录在oversize_used 变量中。 实际复制在函数的底部完成。
      */
 #if TCP_OVERSIZE
 #if TCP_OVERSIZE_DBGCHECK
@@ -458,11 +458,11 @@ tcp_write(struct tcp_pcb *pcb, const void *arg, u16_t len, u8_t apiflags)
 #endif /* TCP_OVERSIZE */
 
     /*
-     * Phase 2: Chain a new pbuf to the end of pcb->unsent.
+     * Phase 2: Chain a new pbuf to the end of pcb->unsent. 阶段2：将新的pbuf链接到pcb-> unsent的末尾。
      *
      * We don't extend segments containing SYN/FIN flags or options
      * (len==0). The new pbuf is kept in concat_p and pbuf_cat'ed at
-     * the end.
+     * the end. 我们不扩展包含SYN / FIN标志或选项（len == 0）的段。 新的pbuf保留在concat_p中，并在末尾保留pbuf_cat'ed。
      */
     if ((pos < len) && (space > 0) && (last_unsent->len > 0)) {
       u16_t seglen = space < len - pos ? space : len - pos;
@@ -514,10 +514,11 @@ tcp_write(struct tcp_pcb *pcb, const void *arg, u16_t len, u8_t apiflags)
   }
 
   /*
-   * Phase 3: Create new segments.
+   * Phase 3: Create new segments. 阶段3：创建新的细分。
    *
    * The new segments are chained together in the local 'queue'
    * variable, ready to be appended to pcb->unsent.
+        新的段在本地'queue'变量中链接在一起，随时可以附加到pcb-> unsent。
    */
   while (pos < len) {
     struct pbuf *p;

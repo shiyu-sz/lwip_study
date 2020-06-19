@@ -1027,7 +1027,7 @@
 #endif
 
 /**
- * The maximum allowed backlog for TCP listen netconns.
+ * The maximum allowed backlog for TCP listen netconns. TCP侦听netconns允许的最大积压。
  * This backlog is used unless another is explicitly specified.
  * 0xff is the maximum (u8_t).
  */

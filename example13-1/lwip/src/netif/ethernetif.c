@@ -195,6 +195,7 @@ struct pbuf *PacketReceive(struct netif *netif)
 	    return NULL;
 	}
 	
+  Printf("recvlen = %d \n", recvlen);
 	//申请内核pbuf空间，为RAM类型
 	p = pbuf_alloc(PBUF_RAW, recvlen, PBUF_RAM);
 	

@@ -175,14 +175,14 @@ struct tcp_pcb {
   u16_t remote_port;
   
   u8_t flags;
-#define TF_ACK_DELAY   ((u8_t)0x01U)   /* Delayed ACK. */
-#define TF_ACK_NOW     ((u8_t)0x02U)   /* Immediate ACK. */
-#define TF_INFR        ((u8_t)0x04U)   /* In fast recovery. */
-#define TF_TIMESTAMP   ((u8_t)0x08U)   /* Timestamp option enabled */
-#define TF_RXCLOSED    ((u8_t)0x10U)   /* rx closed by tcp_shutdown */
-#define TF_FIN         ((u8_t)0x20U)   /* Connection was closed locally (FIN segment enqueued). */
-#define TF_NODELAY     ((u8_t)0x40U)   /* Disable Nagle algorithm */
-#define TF_NAGLEMEMERR ((u8_t)0x80U)   /* nagle enabled, memerr, try to output to prevent delayed ACK to happen */
+#define TF_ACK_DELAY   ((u8_t)0x01U)   /* Delayed ACK. 延迟ack */
+#define TF_ACK_NOW     ((u8_t)0x02U)   /* Immediate ACK. 立刻ack */
+#define TF_INFR        ((u8_t)0x04U)   /* In fast recovery. 在快速恢复 */
+#define TF_TIMESTAMP   ((u8_t)0x08U)   /* Timestamp option enabled 启用时间戳选项 */
+#define TF_RXCLOSED    ((u8_t)0x10U)   /* rx closed by tcp_shutdown rx通过tcp_shutdown关闭  */
+#define TF_FIN         ((u8_t)0x20U)   /* Connection was closed locally (FIN segment enqueued). 连接在本地关闭（FIN段已入队） */
+#define TF_NODELAY     ((u8_t)0x40U)   /* Disable Nagle algorithm 禁用Nagle算法 */
+#define TF_NAGLEMEMERR ((u8_t)0x80U)   /* nagle enabled, memerr, try to output to prevent delayed ACK to happen 已启用nagle，mermerr，尝试输出以防止发生延迟的ACK */
 
   /* the rest of the fields are in host byte order
      as we have to do some math with them */
@@ -231,7 +231,7 @@ struct tcp_pcb {
 
   u16_t snd_buf;   /* Available buffer space for sending (in bytes). */
 #define TCP_SNDQUEUELEN_OVERFLOW (0xffffU-3)
-  u16_t snd_queuelen; /* Available buffer space for sending (in tcp_segs). */
+  u16_t snd_queuelen; /* Available buffer space for sending (in tcp_segs). 用于发送的可用缓冲区空间（在tcp_segs中） */
 
 #if TCP_OVERSIZE
   /* Extra bytes available at the end of the last pbuf in unsent. */
@@ -239,8 +239,8 @@ struct tcp_pcb {
 #endif /* TCP_OVERSIZE */ 
 
   /* These are ordered by sequence number: */
-  struct tcp_seg *unsent;   /* Unsent (queued) segments. */
-  struct tcp_seg *unacked;  /* Sent but unacknowledged segments. */
+  struct tcp_seg *unsent;   /* Unsent (queued) segments. 未发送的段 */
+  struct tcp_seg *unacked;  /* Sent but unacknowledged segments. 发送但未应答的段 */
 #if TCP_QUEUE_OOSEQ  
   struct tcp_seg *ooseq;    /* Received out of sequence segments. */
 #endif /* TCP_QUEUE_OOSEQ */

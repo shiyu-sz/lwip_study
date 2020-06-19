@@ -96,7 +96,7 @@ struct ip_pcb {
  */
 /*#define SOF_DEBUG       0x01U     Unimplemented: turn on debugging info recording */
 #define SOF_ACCEPTCONN    0x02U  /* socket has had listen() */
-#define SOF_REUSEADDR     0x04U  /* allow local address reuse */
+#define SOF_REUSEADDR     0x04U  /* allow local address reuse 允许本地地址重用 */
 #define SOF_KEEPALIVE     0x08U  /* keep connections alive */
 /*#define SOF_DONTROUTE   0x10U     Unimplemented: just use interface addresses */
 #define SOF_BROADCAST     0x20U  /* permit to send and to receive broadcast messages (see IP_SOF_BROADCAST option) */

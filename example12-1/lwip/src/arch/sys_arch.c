@@ -181,6 +181,7 @@ void sys_mbox_free(sys_mbox_t *mbox)
   mbox->mutex = NULL;
 }
 
+//向邮箱发消息，如果邮箱满了等待
 void sys_mbox_post(sys_mbox_t *q, void *msg)
 {
   u8_t Err;
@@ -230,6 +231,7 @@ void sys_mbox_post(sys_mbox_t *q, void *msg)
   sys_mutex_unlock(&(q->mutex));
 }
 
+//尝试向邮箱发消息，如果邮箱满了马上返回
 err_t sys_mbox_trypost(sys_mbox_t *q, void *msg)
 {
   u8_t Err;
@@ -273,6 +275,7 @@ err_t sys_mbox_trypost(sys_mbox_t *q, void *msg)
   return ERR_OK;
 }
 
+//从邮箱中获得消息
 u32_t sys_arch_mbox_fetch(sys_mbox_t *q, void **msg, u32_t timeout)
 {
   u8_t Err;
@@ -362,6 +365,7 @@ u32_t sys_arch_mbox_fetch(sys_mbox_t *q, void **msg, u32_t timeout)
   }
 }
 
+//尝试从一个邮箱读取消息
 u32_t sys_arch_mbox_tryfetch(sys_mbox_t *q, void **msg)
 {
   u32_t tmp_num;
