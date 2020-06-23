@@ -27,6 +27,8 @@
 //#include "tapdev.h"	   
 #include "enc28j60.h"	
 #include  <stdarg.h>
+#include "stdio.h"	
+
 void InitNet(void);	
 void GPIO_Configuration(void);
 void RCC_Configuration(void);
@@ -42,6 +44,41 @@ void NVIC_Configuration(void);
 //extern void SPI_Flash_Init(void);
 extern void Delay(__IO uint32_t nCount);
 extern void SPI1_Init(void);
+
+void delay_ms(int x)
+{
+    int i, j;
+    for(i = 0; i < x; i++)
+    {
+        for(j = 0; j < 5000; j ++);
+    }
+}
+
+//////////////////////////////////////////////////////////////////
+//加入以下代码,支持printf函数,而不需要选择use MicroLIB	  
+#if 1
+#pragma import(__use_no_semihosting)             
+//标准库需要的支持函数                 
+struct __FILE 
+{ 
+	int handle; 
+
+}; 
+
+FILE __stdout;       
+//定义_sys_exit()以避免使用半主机模式    
+_sys_exit(int x) 
+{ 
+	x = x; 
+} 
+//重定义fputc函数 
+int fputc(int ch, FILE *f)
+{      
+	while((USART1->SR&0X40)==0);//循环发送,直到发送完毕   
+    USART1->DR = (u8) ch;      
+	return ch;
+}
+#endif 
 
 /****************************************************************************
 * 名    称：void RCC_Configuration(void)
@@ -76,23 +113,20 @@ void GPIO_Configuration(void)
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_Init(GPIOA, &GPIO_InitStructure);					 
 
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;		 //LED2控制
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;		            //LED2控制
   GPIO_Init(GPIOD, &GPIO_InitStructure);
 
-//  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;					 //SST25VF016B SPI片选
-//  GPIO_Init(GPIOC, &GPIO_InitStructure);
-  
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12|GPIO_Pin_7;		 //PB12---VS1003 SPI片选（V2.1) 
-  GPIO_Init(GPIOB, &GPIO_InitStructure);					 //PB7---触摸屏芯片XPT2046 SPI 片选
-  
-  /* 禁止SPI1总线上的其他设备 */
-  GPIO_SetBits(GPIOB, GPIO_Pin_7);						     //触摸屏芯片XPT2046 SPI 片选禁止  
-  GPIO_SetBits(GPIOB, GPIO_Pin_12);						     //VS1003 SPI片选（V2.1)禁止 
-  GPIO_SetBits(GPIOC, GPIO_Pin_4);						     //SST25VF016B SPI片选禁止  
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;					 //ENC28J60复位
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
 
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;	         	 	//ENC28J60接收完成中断引脚 
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;   	 		//内部上拉输入
   GPIO_Init(GPIOA, &GPIO_InitStructure); 
+
+    GPIO_ResetBits(GPIOA, GPIO_Pin_4);						 //复位ENC28J60
+  delay_ms(1000);					   
+  GPIO_SetBits(GPIOA, GPIO_Pin_4);		 	 	             
+  delay_ms(1000);	
 }
 
 /****************************************************************************

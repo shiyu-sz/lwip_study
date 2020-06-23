@@ -66,13 +66,17 @@ err_t sys_sem_new(sys_sem_t *sem, u8_t count)
 
   LWIP_ASSERT("[Sys_arch]sem != NULL", sem != NULL);
 
+  printf("run sys_sem_new()\n");
   new_sem = OSSemCreate((u16_t)count);
-  LWIP_ASSERT("[Sys_arch]Error creating sem", new_sem != NULL);
-  if(new_sem != NULL) {
+  LWIP_ASSERT("[Sys_arch]Error creating sem !!!", new_sem != NULL);
+  if(new_sem != NULL) 
+  {
+    printf("new_sem != NULL ! \n");
     *sem = (void *)new_sem;
     return ERR_OK;
   }
    
+   printf("sys_sem_new() ERR_MEM! \n");
   *sem = SYS_SEM_NULL;
   return ERR_MEM;
 }
@@ -149,7 +153,7 @@ err_t sys_mbox_new(sys_mbox_t *mbox, int size)
   LWIP_UNUSED_ARG(size);
 
   err = sys_sem_new(&(mbox->sem), 0);
-  //LWIP_ASSERT("Error creating semaphore", err == ERR_OK);
+  LWIP_ASSERT("Error creating semaphore", err == ERR_OK);
   if(err != ERR_OK) {
   	Printf("[Sys_arch]:signal sem fail\n");
     return ERR_MEM;

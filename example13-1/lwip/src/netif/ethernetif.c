@@ -59,6 +59,8 @@
 #include "enc28j60.h"
 #include "string.h"
 
+#include "stdio.h"	
+
 #include "cc.h"
 /* Define those to better describe your network interface. */
 #define IFNAME0 'e'
@@ -79,7 +81,7 @@ struct ethernetif {
 extern struct netif enc28j60_netif;
 
 //global data
-static unsigned char MyMacID[6] = {0x04,0x02,0x35,0x00,0x00,0x01};
+static unsigned char MyMacID[6] = {0xff,0xfe,0xfd,0xfc,0xfb,0x01};
 
 /* Forward declarations. */
 static int  ethernetif_input(struct netif *netif);
@@ -195,7 +197,7 @@ struct pbuf *PacketReceive(struct netif *netif)
 	    return NULL;
 	}
 	
-  Printf("recvlen = %d \n", recvlen);
+  printf("recvlen = %d \n", recvlen);
 	//申请内核pbuf空间，为RAM类型
 	p = pbuf_alloc(PBUF_RAW, recvlen, PBUF_RAM);
 	
